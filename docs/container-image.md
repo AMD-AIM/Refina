@@ -11,8 +11,8 @@ CLI and one venv per engine:
 ```text
 /opt/refina/.venvs/core          refina CLI (on PATH)
 /opt/refina/.venvs/swift         ms-swift
-/opt/refina/.venvs/trl           TRL fork from third_party/trl
-/opt/refina/.venvs/easydistill   EasyDistill from third_party/easydistill
+/opt/refina/.venvs/trl           TRL (trl>=1.17,<1.18)
+/opt/refina/.venvs/easydistill   EasyDistill (v2.0.0 Git tag)
 ```
 
 It is a single-GPU image: one container, one visible GPU.
@@ -49,8 +49,8 @@ Each venv is installed from its requirements file:
 |---|---|
 | core | `pyproject.toml` (`.[dev,dataset,hub]`) |
 | swift | `requirements/rocm714-swift.txt` + `ms-swift==4.5.2` (no deps) |
-| trl | `requirements/rocm714-trl.txt` + `third_party/trl` (editable) |
-| easydistill | `requirements/rocm714-easydistill.txt` + `third_party/easydistill` (editable) |
+| trl | `requirements/rocm714-trl.txt` + `.[trl]` |
+| easydistill | `requirements/rocm714-easydistill.txt` + `.[easydistill]` |
 
 The exact versions are frozen into the image at build time:
 
@@ -95,17 +95,15 @@ you which commit the image came from.
 
 ## Build and push
 
-From a clean checkout with both submodules at their recorded commits:
+From a clean checkout:
 
 ```bash
-git submodule update --init
 scripts/build-image.sh             # build, tag, push, record the digest
 scripts/build-image.sh --no-push   # build and tag only
 ```
 
 The script refuses to build with uncommitted changes or untracked files (exit
-1) and when `third_party/trl` or `third_party/easydistill` is not checked out
-(exit 3). On success the last lines of stdout are:
+1). On success the last lines of stdout are:
 
 ```text
 IMAGE=ccr.ccs.tencentyun.com/radeon/refina:<tag>
@@ -180,7 +178,7 @@ The base image carries PyTorch (BSD-3-Clause) and ROCm under their own licenses.
 | engines | swift, trl, easydistill | swift, trl, easydistill |
 | Env | `ROCR_VISIBLE_DEVICES=2`, `HOME=/work/users/1001/home`, `WORK_DIR=/work/users/1001`, `OUTPUT_DIR=/output`, ROCm SDK paths | none of these |
 | package lists | none | `/opt/refina/.distill/freeze-<venv>.txt` |
-| submodule commits | not recorded | the image's `revision` label; `git submodule status` at that commit |
+| TRL / EasyDistill versions | not recorded | `freeze-trl.txt` / `freeze-easydistill.txt` |
 
 The core and engine venvs no longer contain what the vLLM base brought in
 (vLLM and its serving stack, `transformers`/`peft` in the core venv,

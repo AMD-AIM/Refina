@@ -1,23 +1,25 @@
 # Independent installation
 
-`refina` owns its source dependencies and does not import repositories next
-to its checkout.
+`refina` declares its framework dependencies as versioned extras and does not
+import repositories next to its checkout.
 
 ## Development checkout
 
 ```bash
-git clone --recursive <repository>
+git clone <repository>
 cd refina
 make dev PROFILE=rocm714
 ```
 
-The pinned source revisions live in:
+The framework versions are pinned as extras in `pyproject.toml`:
 
-- `third_party/trl`
-- `third_party/easydistill`
+- `trl`: `trl>=1.17,<1.18` from PyPI
+- `easydistill`: the upstream `v2.0.0` tag, installed from Git because the
+  `easydistill` name on PyPI is a 0.0.1 placeholder
 
-`make dev` initializes missing submodules and delegates environment creation to
-`scripts/setup_envs.py`. The script creates a lightweight core environment and
+`make dev` delegates environment creation to `scripts/setup_envs.py`, which
+installs `.[trl]` into the TRL environment and `.[easydistill]` into the
+EasyDistill environment. The script creates a lightweight core environment and
 one environment per heavy engine:
 
 ```text
@@ -51,18 +53,11 @@ python3 scripts/setup_envs.py --profile rocm714 --offline
 The wheelhouse intentionally excludes Torch, vLLM, ROCm libraries, and
 transitive packages already supplied by the base image.
 
-## Updating source dependencies
+## Updating framework dependencies
 
-Updates are explicit. Never track an upstream branch at runtime.
-
-```bash
-git -C third_party/trl fetch origin
-git -C third_party/trl checkout <reviewed-commit>
-git add third_party/trl
-```
-
-The parent repository records the selected commit as its gitlink. Run
-`make check` and the multi-GPU smoke suite before accepting an update.
+Updates are explicit. Change the `trl` or `easydistill` extra in
+`pyproject.toml` (a version range for TRL, a reviewed tag for EasyDistill),
+then run `make check` and the multi-GPU smoke suite before accepting it.
 
 ## Runtime selection
 

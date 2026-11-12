@@ -16,10 +16,6 @@ KFD_GID="${KFD_GID:-$(stat -c %g /dev/kfd 2>/dev/null || echo "$HOST_GID")}"
 RENDER_GID="${RENDER_GID:-$(stat -c %g /dev/dri/renderD128 2>/dev/null || echo "$KFD_GID")}"
 REFINA_ENVS_ROOT="${REFINA_ENVS_ROOT:-$CONTAINER_WORKDIR/.venvs}"
 
-# Framework source trees are pinned Git submodules inside this repository.
-EASYDISTILL_SRC="${EASYDISTILL_SRC:-$CONTAINER_WORKDIR/third_party/easydistill}"
-TRL_SRC="${TRL_SRC:-$CONTAINER_WORKDIR/third_party/trl}"
-
 # GPUs for training. Teacher vLLM holds 0,1, so stay clear of those.
 TRAIN_GPUS="${TRAIN_GPUS:-2,3,4,5,6,7}"
 

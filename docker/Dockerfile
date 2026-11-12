@@ -3,12 +3,12 @@ FROM ${BASE_IMAGE}
 ARG BASE_IMAGE
 ARG ENGINES=swift,trl,easydistill
 ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
-# setuptools>=77.0.3 is required by the pinned TRL
+# setuptools>=77.0.3 is required because setup_envs.py installs with --no-build-isolation
 RUN python3 -m pip install --no-cache-dir --index-url "${PIP_INDEX_URL}" "setuptools>=77.0.3,<80" wheel
 WORKDIR /opt/refina
 COPY . /opt/refina
 RUN PIP_NO_CACHE_DIR=1 python3 scripts/setup_envs.py --profile rocm714 --engines "${ENGINES}" \
-      --core-dir .venvs/core --skip-submodules --index-url "${PIP_INDEX_URL}" \
+      --core-dir .venvs/core --index-url "${PIP_INDEX_URL}" \
     && for env in .venvs/*/; do name=$(basename "$env"); "$env/bin/python" -m pip freeze --all > ".distill/freeze-$name.txt"; done
 ENV REFINA_ENVS_ROOT=/opt/refina/.venvs \
     PATH=/opt/refina/.venvs/core/bin:${PATH} \

@@ -42,8 +42,6 @@ def repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     files = {
         "docker/Dockerfile": "FROM scratch\n",
-        "third_party/trl/pyproject.toml": "",
-        "third_party/easydistill/pyproject.toml": "",
         ".gitignore": "build/\n",
     }
     for name, text in files.items():
@@ -101,14 +99,6 @@ def test_refuses_a_worktree_with_untracked_files(repo, docker):
     result = _run(repo, docker)
     assert result.returncode == 1
     assert "uncommitted changes" in result.stderr
-    assert _calls(docker) == []
-
-
-def test_refuses_missing_submodule_sources(repo, docker):
-    _git(repo, "rm", "-q", "third_party/trl/pyproject.toml")
-    _git(repo, "commit", "-q", "-m", "drop trl")
-    result = _run(repo, docker)
-    assert result.returncode == 3
     assert _calls(docker) == []
 
 

@@ -4,6 +4,7 @@ import importlib.metadata
 import subprocess
 import sys
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 import yaml
@@ -136,3 +137,26 @@ def test_broken_plugin_does_not_hide_others(monkeypatch, capsys):
     assert engines["broken"]["plugin"] == "error"
     assert "missing_dep" in engines["broken"]["error"]
     assert engines["trl"]["plugin"] == "core"
+
+
+def test_pyproject_pins_trl_and_easydistill():
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        tomllib = pytest.importorskip("tomli")
+    root = Path(__file__).resolve().parents[2]
+    extras = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"][
+        "optional-dependencies"
+    ]
+    assert extras["trl"] == ["trl>=1.17,<1.18"]
+    assert extras["easydistill"] == [
+        "easydistill @ git+https://github.com/modelscope/easydistill@v2.0.0"
+    ]
+
+
+def test_doctor_reports_no_submodules(tmp_path, monkeypatch):
+    from refina import doctor
+
+    monkeypatch.setenv("REFINA_ENVS_ROOT", str(tmp_path))
+    names = [check.name for check in doctor.collect()]
+    assert not [name for name in names if name.startswith("submodule:")]

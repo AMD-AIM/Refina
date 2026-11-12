@@ -3,11 +3,7 @@ PIP ?= .venv/bin/pip
 PROFILE ?= rocm714
 ENGINES ?= swift,trl,easydistill
 
-.PHONY: submodules venv dev install doctor check lint fmt test smoke-multigpu wheelhouse clean
-
-submodules:
-	git submodule sync --recursive
-	git submodule update --init --recursive
+.PHONY: venv dev install doctor check lint fmt test smoke-multigpu wheelhouse clean
 
 venv:
 	python3 -m venv --system-site-packages .venv
@@ -44,8 +40,9 @@ wheelhouse:
 		-r requirements/$(PROFILE)-swift.txt \
 		-r requirements/$(PROFILE)-trl.txt \
 		-r requirements/$(PROFILE)-easydistill.txt \
-		ms-swift==4.5.2
-	$(PIP) wheel --wheel-dir wheelhouse --no-deps . third_party/trl third_party/easydistill
+		ms-swift==4.5.2 'trl>=1.17,<1.18'
+	$(PIP) wheel --wheel-dir wheelhouse --no-deps . \
+		'easydistill @ git+https://github.com/modelscope/easydistill@v2.0.0'
 
 clean:
 	rm -rf .pytest_cache .ruff_cache build dist src/*.egg-info

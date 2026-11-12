@@ -68,8 +68,12 @@ def test_per_commit_args_come_after_every_run(dockerfile):
         assert min(declared) > last_run
 
 
-def test_dockerignore_keeps_submodule_sources():
+def test_dockerignore_excludes_local_state():
     lines = (REPO / ".dockerignore").read_text(encoding="utf-8").splitlines()
     for pattern in ("**/.git", ".venv", ".venvs", ".distill", "build", "work", "output"):
         assert pattern in lines
-    assert not [line for line in lines if line.startswith("third_party")]
+
+
+def test_repo_has_no_submodules():
+    assert not (REPO / ".gitmodules").exists()
+    assert not (REPO / "third_party").exists()

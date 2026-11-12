@@ -64,10 +64,6 @@ def collect(selected: list[str] | None = None) -> list[Check]:
     ]
     for name in selected or _checked_engines():
         checks.append(_engine_check(name, registry.spec(name).doctor))
-
-    for name in ("trl", "easydistill"):
-        path = root / "third_party" / name
-        checks.append(Check(f"submodule:{name}", path.is_dir() and any(path.iterdir()), str(path)))
     return checks
 
 

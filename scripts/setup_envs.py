@@ -16,10 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 ENVS = ROOT / ".venvs"
 STATE = ROOT / ".distill"
-SOURCES = {
-    "trl": ROOT / "third_party" / "trl",
-    "easydistill": ROOT / "third_party" / "easydistill",
-}
+EXTRAS = ("trl", "easydistill")
 SUPPORTED_ENGINES = ("swift", "trl", "easydistill")
 BASE_PTH_NAME = "_refina_base.pth"
 PINNED_BASE_PACKAGES = ("torch", "torchvision", "torchaudio", "triton", "vllm")
@@ -28,16 +25,6 @@ PINNED_BASE_PACKAGES = ("torch", "torchvision", "torchaudio", "triton", "vllm")
 def run(command: list[str], *, env: dict[str, str] | None = None) -> None:
     print("+", " ".join(command), flush=True)
     subprocess.run(command, cwd=ROOT, env=env, check=True)  # noqa: S603
-
-
-def initialise_submodules() -> None:
-    if not (ROOT / ".git").exists():
-        return
-    run(["git", "submodule", "sync", "--recursive"])
-    # The pinned projects have long histories; a fresh install only needs the
-    # recorded commits. The mirror can fetch an older pinned commit separately
-    # when it is not at the current shallow tip.
-    run(["git", "submodule", "update", "--init", "--recursive", "--depth", "1"])
 
 
 def _purelib(python: str) -> str:
@@ -142,8 +129,8 @@ def install_engine(name: str, python: Path, args: argparse.Namespace, constraint
         pip_install(python, ["-r", str(requirement)], args, constraints)
 
     if name == "swift":
-        # ms-swift currently declares a TRL range incompatible with our custom
-        # distillation fork. It is isolated here and its runtime set is explicit.
+        # ms-swift currently declares a TRL range incompatible with the TRL
+        # engine's pin. It is isolated here and its runtime set is explicit.
         pip_install(
             python,
             ["ms-swift==4.5.2"],
@@ -155,7 +142,7 @@ def install_engine(name: str, python: Path, args: argparse.Namespace, constraint
     elif name == "trl":
         # A system-site package does not place its console script in the venv.
         # Force only the small launcher package locally so all ranks use this
-        # environment's Python and editable TRL fork.
+        # environment's Python.
         pip_install(
             python,
             ["accelerate>=1.14"],
@@ -164,25 +151,10 @@ def install_engine(name: str, python: Path, args: argparse.Namespace, constraint
             no_deps=True,
             ignore_installed=True,
         )
-        source = SOURCES[name]
-        if not (source / "pyproject.toml").is_file():
-            raise SystemExit(f"{name} submodule is missing: {source}")
-        pip_install(python, ["-e", str(source)], args, constraints, no_deps=True)
-    elif name in SOURCES:
-        source = SOURCES[name]
-        if not (source / "pyproject.toml").is_file():
-            raise SystemExit(f"{name} submodule is missing: {source}")
-        pip_install(python, ["-e", str(source)], args, constraints)
-
-
-def git_revision(path: Path) -> str | None:
-    try:
-        return subprocess.check_output(
-            ["git", "-C", str(path), "rev-parse", "HEAD"],
-            text=True,
-        ).strip()
-    except (OSError, subprocess.SubprocessError):
-        return None
+    if name in EXTRAS:
+        # Offline, take the wheel `make wheelhouse` built; the extra's git URL needs the network.
+        target = [name] if args.offline else ["-e", f".[{name}]"]
+        pip_install(python, target, args, constraints)
 
 
 def write_lock(profile: str, engines: list[str], base_python: str, core_dir: Path) -> None:
@@ -192,7 +164,6 @@ def write_lock(profile: str, engines: list[str], base_python: str, core_dir: Pat
         "base_python": base_python,
         "core_environment": str(core_dir),
         "engines": engines,
-        "submodules": {name: git_revision(path) for name, path in SOURCES.items()},
     }
     (STATE / "environment.lock.json").write_text(
         json.dumps(payload, indent=2) + "\n",
@@ -208,7 +179,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--engines", default=",".join(SUPPORTED_ENGINES))
     parser.add_argument("--index-url", default=os.environ.get("PIP_INDEX_URL"))
     parser.add_argument("--offline", action="store_true")
-    parser.add_argument("--skip-submodules", action="store_true")
     parser.add_argument("--check-only", action="store_true")
     return parser.parse_args()
 
@@ -219,8 +189,6 @@ def main() -> int:
     unknown = sorted(set(engines) - set(SUPPORTED_ENGINES))
     if unknown:
         raise SystemExit(f"unknown engines: {', '.join(unknown)}")
-    if not args.skip_submodules:
-        initialise_submodules()
     if args.check_only:
         for name in engines:
             print(f"{name}: {'ready' if (ENVS / name / 'bin/python').is_file() else 'missing'}")

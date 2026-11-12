@@ -8,14 +8,14 @@ One command for knowledge distillation, in two flavours:
   learns from the teacher's logits (TRL `DistillationTrainer`), with FSDP2 or
   DeepSpeed ZeRO-3 for multi-GPU runs
 
-The repository is self-contained: the custom TRL and EasyDistill revisions are
-pinned Git submodules under `third_party/`. Heavy engines run in isolated virtual
-environments, while the core CLI and test suite remain usable without Torch.
+TRL and EasyDistill are pinned as versioned extras in `pyproject.toml`
+(`trl>=1.17,<1.18`, EasyDistill at its `v2.0.0` Git tag). Heavy engines run in
+isolated virtual environments, while the core CLI and test suite remain usable without Torch.
 
 ## Quick start
 
 ```bash
-git clone --recursive https://github.com/AMD-AIM/Refina.git
+git clone https://github.com/AMD-AIM/Refina.git
 cd refina
 make dev PROFILE=rocm714
 
@@ -208,7 +208,7 @@ else.
 ## Development
 
 ```bash
-make dev PROFILE=rocm714  # submodules + isolated core/engine venvs
+make dev PROFILE=rocm714  # isolated core/engine venvs
 make doctor         # verify every engine environment
 make check          # lint + unit tests + doctor
 make test           # unit tests, no GPU needed
@@ -216,12 +216,11 @@ make lint           # ruff
 ./scripts/smoke-cli.sh   # exit-code contract, no GPU, no network
 ```
 
-`make dev` uses only standard `venv` and pip operations. It initializes the
-submodules, preserves the image's preinstalled ROCm Torch, installs the core in
+`make dev` uses only standard `venv` and pip operations. It preserves the image's
+preinstalled ROCm Torch, installs the core in
 `.venv`, and creates `.venvs/swift`, `.venvs/trl`, and
 `.venvs/easydistill`. Use `ENGINES=trl` to install only one engine. The selected
-profile and exact submodule commits are recorded in
-`.distill/environment.lock.json`.
+profile and engines are recorded in `.distill/environment.lock.json`.
 
 `pip install -e .` remains valid for installing only the lightweight core. It
 does not perform network or Git operations.
