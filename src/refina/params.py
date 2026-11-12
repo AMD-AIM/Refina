@@ -699,8 +699,7 @@ PARAMS: tuple[Param, ...] = (
     Param(
         flag="--dataset",
         dest="dataset",
-        help="Training data: local path or network/Hub URI (SFT JSONL for swift, prompts for "
-        "trl).",
+        help="Training data: local path or network/Hub URI (SFT JSONL for swift, prompts for trl).",
         kind="dataset",
         engines=("swift", "trl"),
         required=("swift", "trl"),

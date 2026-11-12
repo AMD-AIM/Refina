@@ -77,13 +77,21 @@ class HttpFetcher(Fetcher):
                 return self._get(url, target)
             except requests.HTTPError as exc:
                 status = exc.response.status_code if exc.response is not None else None
-                if spec.refresh is None or status not in self.EXPIRED or refreshes >= self.MAX_REFRESHES:
+                if (
+                    spec.refresh is None
+                    or status not in self.EXPIRED
+                    or refreshes >= self.MAX_REFRESHES
+                ):
                     raise DatasetFetchError(
                         f"failed to download {redact_url(url)}: HTTP {status}"
                     ) from exc
                 refreshes += 1
-                logger.warning("dataset URL rejected (HTTP %s); requesting a fresh link (%d/%d)",
-                               status, refreshes, self.MAX_REFRESHES)
+                logger.warning(
+                    "dataset URL rejected (HTTP %s); requesting a fresh link (%d/%d)",
+                    status,
+                    refreshes,
+                    self.MAX_REFRESHES,
+                )
                 try:
                     url = spec.refresh()
                 except DatasetFetchError:

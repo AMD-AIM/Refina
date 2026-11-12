@@ -4,7 +4,8 @@ Each event is one log line ending in ``REFINA_EVENT <json>``; the JSON always
 has ``event`` and ``time`` (UTC, RFC 3339)::
 
     REFINA_EVENT {"event": "stage", "stage": "downloading", "time": "..."}
-    REFINA_EVENT {"event": "exit", "exit_code": 5, "code": "IntegrityCheckFailed", "stage": "downloading", ...}
+    REFINA_EVENT {"event": "exit", "exit_code": 5, "code": "IntegrityCheckFailed",
+                  "stage": "downloading", ...}
 
 Stages, in order: ``downloading``, ``training``.
 """

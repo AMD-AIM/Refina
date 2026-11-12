@@ -167,8 +167,10 @@ def resolve(spec: DatasetSpec, cache_dir: Path) -> ResolvedDataset:
     entry = cache_entry(spec, cache_dir)
     if entry.is_complete:
         cached = entry.stored_path()
-        if cached.exists() and spec.sha256 and not (
-            cached.is_file() and integrity.matches(cached, spec.sha256)
+        if (
+            cached.exists()
+            and spec.sha256
+            and not (cached.is_file() and integrity.matches(cached, spec.sha256))
         ):
             logger.warning("cached %s does not match its sha256; refetching", spec.describe())
             _drop(entry)

@@ -175,7 +175,7 @@ def test_multi_gpu_command_is_temporarily_disabled():
 
 
 # Spelled in pieces so a repo-wide grep for the removed engines stays empty.
-@pytest.mark.parametrize("name", ["yo" "lo", "ultra" "lytics"])
+@pytest.mark.parametrize("name", ["yo" + "lo", "ultra" + "lytics"])
 def test_removed_detection_engines_are_unknown(name, tmp_path):
     with pytest.raises(UsageError, match="unknown engine"):
         build_context({"engine": name, "output": str(tmp_path / "o")})

@@ -46,7 +46,9 @@ def verify(path: Path, expected: str, what: str) -> None:
     path = Path(path)
     want = parse_digest(expected)
     if not path.is_file():
-        raise IntegrityError(f"{what}: {path} is not a single file, so its sha256 cannot be checked")
+        raise IntegrityError(
+            f"{what}: {path} is not a single file, so its sha256 cannot be checked"
+        )
     got = sha256_file(path)
     if got != want:
         raise IntegrityError(f"{what}: sha256 mismatch for {path.name}: expected {want}, got {got}")
