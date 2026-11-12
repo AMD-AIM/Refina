@@ -315,5 +315,6 @@ engines. Entry points exist only once the package is installed, so run
 `pip install -e .` again after adding one.
 
 Command-line flags are still declared centrally in `src/refina/params.py`; a
-new engine that needs its own flags or should be accepted by `--engine` must be
-added there as well.
+new engine has to be added to `ENGINES` there before `--engine` accepts it.
+Until then `--engine my-engine` exits 2 and says the plugin's flags are not
+defined yet.

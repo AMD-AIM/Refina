@@ -12,15 +12,6 @@ import yaml
 from .runtime_env import project_root
 
 
-def supported_engine_names(*, include_internal: bool = True) -> tuple[str, ...]:
-    from .engines import registry  # lazy: refina.engines imports this module
-
-    names = registry.available()
-    if include_internal:
-        return names
-    return tuple(name for name in names if not registry.spec(name).internal)
-
-
 def _model_roots() -> list[Path]:
     configured = [
         os.environ.get("MODELS_DIR"),

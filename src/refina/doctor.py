@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass
 
 from .engines import registry
 from .engines.spec import DoctorCheck
+from .errors import ExitCode, UsageError
 from .runtime_env import environments_root, project_root
 
 
@@ -68,8 +69,13 @@ def collect(selected: list[str] | None = None) -> list[Check]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    try:
+        engines = _checked_engines()
+    except UsageError as exc:
+        print(f"refina doctor: {exc.message}", file=sys.stderr)
+        return int(ExitCode.USAGE)
     parser = argparse.ArgumentParser(prog="refina doctor")
-    parser.add_argument("--engine", action="append", choices=_checked_engines())
+    parser.add_argument("--engine", action="append", choices=engines)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     checks = collect(args.engine)

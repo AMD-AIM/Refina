@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 from pathlib import Path
 
 import pytest
@@ -38,4 +39,9 @@ def test_distillation_config_accepts_engine_fields():
 def test_prepare_fsdp_still_importable():
     from trl.models.utils import prepare_fsdp
 
-    assert callable(prepare_fsdp)
+    assert list(inspect.signature(prepare_fsdp).parameters)[:2] == ["model", "accelerator"]
+
+
+def test_generation_hook_still_exists():
+    # The engine wraps this method in accelerator.autocast(); a rename would silently drop that.
+    assert callable(getattr(trl.DistillationTrainer, "_generate_single_turn", None))

@@ -11,6 +11,7 @@ from __future__ import annotations
 import functools
 import importlib
 import importlib.metadata
+import logging
 from typing import TYPE_CHECKING
 
 from ..errors import UsageError
@@ -19,6 +20,8 @@ from .spec import ENTRY_POINT_GROUP, EngineSpec
 
 if TYPE_CHECKING:
     from .base import Engine
+
+logger = logging.getLogger(__name__)
 
 _broken: dict[str, str] = {}
 
@@ -43,9 +46,13 @@ def specs() -> dict[str, EngineSpec]:
             _broken[entry_point.name] = f"entry point does not resolve to an EngineSpec: {loaded!r}"
             continue
         if loaded.name != entry_point.name:
-            raise UsageError(
+            _broken[entry_point.name] = (
                 f"engine entry point '{entry_point.name}' publishes a spec named '{loaded.name}'"
             )
+            continue
+        if loaded.name in found:
+            logger.warning("ignoring duplicate engine entry point '%s'", loaded.name)
+            continue
         found[loaded.name] = loaded
     return found
 

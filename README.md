@@ -194,6 +194,8 @@ src/refina/
   utils.py        atomic writes, JSONL, HTTP session, child processes
   engines/
     base.py       the interface: dataset_specs → preflight → run
+    spec.py       EngineSpec: everything the core knows about an engine
+    registry.py   reads specs from the refina.engines entry points
     easydistill.py  black box, stage one: teacher API → SFT JSONL
     swift.py        black box, stage two: student SFT
     easydistill_swift.py  both stages chained, with the intermediate JSONL kept
@@ -201,9 +203,10 @@ src/refina/
     noop.py         no frameworks, used to test the CLI itself
 ```
 
-Adding an engine means adding one module plus a line in
-`engines/registry.py`; adding a parameter means editing `params.py` and nothing
-else.
+Adding an engine means adding one module that exports `SPEC`, an entry point
+under `refina.engines` and its name in `params.ENGINES` (see
+[docs/engines.md](docs/engines.md)); adding a parameter means editing
+`params.py` and nothing else.
 
 ## Development
 

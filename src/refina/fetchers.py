@@ -63,45 +63,18 @@ class HttpFetcher(Fetcher):
     def can_handle(self, spec: DatasetSpec) -> bool:
         return spec.scheme in {"http", "https"}
 
-    # Signed URLs answer 400 (GCS ExpiredToken), 401 or 403 once they expire.
-    EXPIRED = frozenset({400, 401, 403})
-    MAX_REFRESHES = 2
-
     def fetch(self, spec: DatasetSpec, staging: Path) -> Path:
         filename = Path(unquote(urlparse(spec.uri).path)).name or "dataset"
         target = staging / filename
-        url, refreshes = spec.uri, 0
-        while True:
-            logger.info("downloading %s -> %s", redact_url(url), target)
-            try:
-                return self._get(url, target)
-            except requests.HTTPError as exc:
-                status = exc.response.status_code if exc.response is not None else None
-                if (
-                    spec.refresh is None
-                    or status not in self.EXPIRED
-                    or refreshes >= self.MAX_REFRESHES
-                ):
-                    raise DatasetFetchError(
-                        f"failed to download {redact_url(url)}: HTTP {status}"
-                    ) from exc
-                refreshes += 1
-                logger.warning(
-                    "dataset URL rejected (HTTP %s); requesting a fresh link (%d/%d)",
-                    status,
-                    refreshes,
-                    self.MAX_REFRESHES,
-                )
-                try:
-                    url = spec.refresh()
-                except DatasetFetchError:
-                    raise
-                except Exception as refresh_exc:  # noqa: BLE001 - SDK and HTTP errors alike
-                    raise DatasetFetchError(
-                        f"dataset URL expired and refreshing it failed: {refresh_exc}"
-                    ) from refresh_exc
-            except requests.RequestException as exc:
-                raise DatasetFetchError(f"failed to download {redact_url(url)}: {exc}") from exc
+        url = spec.uri
+        logger.info("downloading %s -> %s", redact_url(url), target)
+        try:
+            return self._get(url, target)
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            raise DatasetFetchError(f"failed to download {redact_url(url)}: HTTP {status}") from exc
+        except requests.RequestException as exc:
+            raise DatasetFetchError(f"failed to download {redact_url(url)}: {exc}") from exc
 
     @staticmethod
     def _get(url: str, target: Path) -> Path:

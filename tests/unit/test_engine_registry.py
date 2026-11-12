@@ -10,13 +10,13 @@ import pytest
 import yaml
 
 from refina import params as P
-from refina.cli import main
+from refina.cli import build_context, main
 from refina.engines import registry
 from refina.engines.base import Engine, RunResult
 from refina.engines.spec import ENTRY_POINT_GROUP, DoctorCheck, EngineSpec
 from refina.errors import ExitCode, UsageError
 
-BUILTIN = {"easydistill", "swift", "trl", "easydistill-swift", "noop"}
+BUILTIN = set(P.ENGINES)
 
 
 class DummyEngine(Engine):
@@ -114,10 +114,34 @@ def test_third_party_plugin_is_listed(monkeypatch):
     assert isinstance(registry.load("dummy"), DummyEngine)
 
 
-def test_spec_name_must_match_entry_point(monkeypatch):
-    _install(monkeypatch, FakeEntryPoint("a", replace(SPEC, name="b")))
-    with pytest.raises(UsageError, match="'a'.*'b'"):
-        registry.specs()
+def test_cli_explains_plugin_without_params(monkeypatch, tmp_path):
+    _install(monkeypatch, FakeEntryPoint("dummy", SPEC))
+    with pytest.raises(UsageError, match=r"refina\.params does not define"):
+        build_context({"engine": "dummy", "output": str(tmp_path / "o")})
+    assert main(["--engine", "dummy", "--output", str(tmp_path / "o")]) == ExitCode.USAGE
+
+
+def test_cli_shows_why_a_plugin_failed_to_load(monkeypatch, tmp_path):
+    _install(monkeypatch, FakeEntryPoint("broken", ImportError("no module named 'missing_dep'")))
+    with pytest.raises(UsageError, match="failed to load: ImportError: .*missing_dep"):
+        build_context({"engine": "broken", "output": str(tmp_path / "o")})
+    assert main(["--engine", "broken", "--output", str(tmp_path / "o")]) == ExitCode.USAGE
+
+
+def test_doctor_without_entry_points_is_a_usage_error(monkeypatch, capsys):
+    from refina import doctor
+
+    _install(monkeypatch, keep_builtin=False)
+    assert doctor.main([]) == ExitCode.USAGE
+    assert "pip install -e ." in capsys.readouterr().err
+
+
+def test_duplicate_engine_name_keeps_the_first(monkeypatch, caplog):
+    from refina.engines import trl
+
+    _install(monkeypatch, FakeEntryPoint("trl", replace(SPEC, name="trl")))
+    assert registry.spec("trl") is trl.SPEC
+    assert "duplicate engine entry point 'trl'" in caplog.text
 
 
 def test_missing_entry_points_explains_install(monkeypatch):
@@ -126,16 +150,25 @@ def test_missing_entry_points_explains_install(monkeypatch):
         registry.specs()
 
 
-def test_broken_plugin_does_not_hide_others(monkeypatch, capsys):
-    _install(monkeypatch, FakeEntryPoint("broken", ImportError("no module named 'missing_dep'")))
-    assert BUILTIN <= set(registry.available())
-    with pytest.raises(UsageError, match="missing_dep"):
+@pytest.mark.parametrize(
+    ("target", "reason"),
+    [
+        (ImportError("no module named 'missing_dep'"), "missing_dep"),
+        ("not a spec", "does not resolve to an EngineSpec"),
+        (replace(SPEC, name="other"), "publishes a spec named 'other'"),
+    ],
+    ids=["import-error", "not-a-spec", "name-mismatch"],
+)
+def test_broken_plugin_does_not_hide_others(monkeypatch, capsys, target, reason):
+    _install(monkeypatch, FakeEntryPoint("broken", target))
+    assert set(registry.available()) == BUILTIN
+    with pytest.raises(UsageError, match="failed to load"):
         registry.spec("broken")
 
     assert main(["--engines"]) == ExitCode.OK
     engines = yaml.safe_load(capsys.readouterr().out)["engines"]
     assert engines["broken"]["plugin"] == "error"
-    assert "missing_dep" in engines["broken"]["error"]
+    assert reason in engines["broken"]["error"]
     assert engines["trl"]["plugin"] == "core"
 
 

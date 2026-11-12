@@ -181,6 +181,25 @@ def _finish(started: bool, exc: DistillRunError) -> int:
     return int(exc.exit_code)
 
 
+def _unknown_engine(name: str) -> UsageError:
+    try:
+        broken = registry.broken()
+        registered = registry.available()
+    except UsageError as exc:
+        return exc
+    if name in broken:
+        return UsageError(f"engine '{name}' failed to load: {broken[name]}")
+    if name in registered:
+        return UsageError(
+            f"engine '{name}' is registered by a plugin, but refina.params does not define "
+            "its flags yet (see docs/engines.md)"
+        )
+    return UsageError(
+        f"unknown engine '{name}'; supported engines: {', '.join(P.ENGINES)} "
+        "(run `refina --engines` for details)"
+    )
+
+
 def build_context(args: dict[str, Any]) -> RunContext:
     env = dict(os.environ)
 
@@ -188,10 +207,7 @@ def build_context(args: dict[str, Any]) -> RunContext:
     if not engine_name:
         raise UsageError("--engine is required (or set REFINA_ENGINE)")
     if engine_name not in P.ENGINES:
-        raise UsageError(
-            f"unknown engine '{engine_name}'; supported engines: {', '.join(P.ENGINES)} "
-            "(run `refina --engines` for details)"
-        )
+        raise _unknown_engine(engine_name)
     args["engine"] = engine_name
 
     params = merge_sources(engine_name, args, env)
