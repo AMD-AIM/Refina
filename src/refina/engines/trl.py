@@ -10,7 +10,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 from .. import preflight
 from ..context import RunContext
@@ -39,6 +39,17 @@ DEFAULT_ARGS: dict[str, Any] = {
     "report_to": "none",
     "dataloader_num_workers": 0,
 }
+
+# DistillationConfig fields the engine sets itself; tests pin them against the installed TRL.
+ENGINE_CONFIG_FIELDS: Final[frozenset[str]] = frozenset(
+    {
+        "output_dir",
+        "teacher_model_name_or_path",
+        "model_init_kwargs",
+        "teacher_model_init_kwargs",
+        *DEFAULT_ARGS,
+    }
+)
 
 DEFAULT_MODEL_INIT: dict[str, Any] = {
     "torch_dtype": "bfloat16",
@@ -140,7 +151,8 @@ class TrlEngine(Engine):
                 # DistillationTrainer currently calls Accelerator.prepare_model
                 # for the frozen teacher, unlike TRL's DPO/GRPO trainers. That
                 # leaves the second model on CPU under FSDP. Use TRL's dedicated
-                # helper, which also handles an already-wrapped model.
+                # helper, which also handles an already-wrapped model
+                # (huggingface/trl#8253).
                 from trl.models.utils import prepare_fsdp
 
                 trainer.teacher_model = prepare_fsdp(
