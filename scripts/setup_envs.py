@@ -20,7 +20,7 @@ SOURCES = {
     "trl": ROOT / "third_party" / "trl",
     "easydistill": ROOT / "third_party" / "easydistill",
 }
-SUPPORTED_ENGINES = ("swift", "trl", "easydistill", "yolo", "ultralytics")
+SUPPORTED_ENGINES = ("swift", "trl", "easydistill")
 BASE_PTH_NAME = "_refina_base.pth"
 PINNED_BASE_PACKAGES = ("torch", "torchvision", "torchaudio", "triton", "vllm")
 

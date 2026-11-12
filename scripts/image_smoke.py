@@ -1,39 +1,28 @@
 #!/usr/bin/env python3
 """In-container smoke for the refina image.
 
-Runs, in order: the shell tools the RC wrapper needs, ``refina doctor`` for all
-five engines, ROCm Torch, the GPU (unless ``--device cpu``) and an importable
-refina CLI in every venv, a
-2-epoch ``--engine ultralytics`` run on coco8 served as Platform NDJSON over local
-HTTP, and a 2-step ``--engine yolo`` run on the coco8 directory. Each check prints
+Runs, in order: the shell tools the RC wrapper needs, ``refina doctor`` for every
+engine, then ROCm Torch, the GPU (unless ``--device cpu``), the engine's framework
+imports and an importable refina CLI in every venv. Each check prints
 ``IMAGE_SMOKE <name> exit=<n> seconds=<s>``; the last line is
 ``IMAGE_SMOKE result=PASS`` or ``IMAGE_SMOKE result=FAIL``.
 
-    python scripts/image_smoke.py --coco8 coco8.zip --device 0 --out /tmp/image-smoke
+    python scripts/image_smoke.py --device 0
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
-import shutil
 import subprocess
-import threading
 import time
-import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
-from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-ENGINES = ("swift", "trl", "easydistill", "yolo", "ultralytics")
+ENGINES = ("swift", "trl", "easydistill")
 VENVS = ("core", *ENGINES)
 SHELL_TOOLS = ("setsid", "find", "head")
-SPLITS = ("train", "val", "test")
-IMAGE_SUFFIXES = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".webp"})
-ULTRALYTICS_EPOCHS = 2
 
 
 @dataclass
@@ -43,54 +32,12 @@ class Check:
     expect: Callable[[], bool] | None = None
 
 
-def coco_to_ndjson(root: Path, base_url: str, out: Path) -> Path:
-    """Write a YOLO txt tree (``images/<split>``, ``labels/<split>``) as Platform NDJSON."""
-    from refina.yolo.data import COCO80
-
-    records: list[dict] = [
-        {
-            "type": "dataset",
-            "task": "detect",
-            "class_names": {str(i): name for i, name in enumerate(COCO80)},
-        }
-    ]
-    for split in SPLITS:
-        images = root / "images" / split
-        if not images.is_dir():
-            continue
-        for image in sorted(p for p in images.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES):
-            label = root / "labels" / split / f"{image.stem}.txt"
-            boxes = []
-            if label.is_file():
-                for row in label.read_text(encoding="utf-8").splitlines():
-                    fields = row.split()
-                    if len(fields) == 5:
-                        boxes.append([int(fields[0]), *(float(v) for v in fields[1:])])
-            records.append(
-                {
-                    "type": "image",
-                    "file": image.name,
-                    "split": split,
-                    "url": f"{base_url}/images/{split}/{image.name}",
-                    "annotations": {"boxes": boxes},
-                }
-            )
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(
-        "".join(json.dumps(record, separators=(",", ":")) + "\n" for record in records),
-        encoding="utf-8",
-    )
-    return out
-
-
 # The imports each engine performs at run time; doctor does not exercise them, and
 # ms-swift is installed --no-deps, so a missing dependency only shows up here.
 FRAMEWORK_IMPORTS = {
     "swift": ("from swift.pipelines import sft_main", "from swift.arguments import SftArguments"),
     "trl": ("from trl import DistillationConfig, DistillationTrainer",),
     "easydistill": ("from easydistill.cli.main import _JOB_DISPATCH",),
-    "yolo": ("import cv2",),
-    "ultralytics": ("import cv2", "from ultralytics import YOLO", "import ultralytics_platform"),
 }
 
 
@@ -110,17 +57,7 @@ def _torch_code(venv: str, device: str) -> str:
     return "\n".join(lines)
 
 
-def _csv_rows(path: Path) -> int:
-    if not path.is_file():
-        return -1
-    return max(len([row for row in path.read_text(encoding="utf-8").splitlines() if row]) - 1, 0)
-
-
-def build_checks(
-    coco8: Path, base_url: str, device: str, out: Path, envs_root: Path
-) -> list[Check]:
-    device_args = [] if device == "cpu" else ["--device", device]
-    work = ["--work-dir", str(out / "work")]
+def build_checks(device: str, envs_root: Path) -> list[Check]:
     doctor = ["refina", "doctor"]
     for engine in ENGINES:
         doctor += ["--engine", engine]
@@ -134,60 +71,6 @@ def build_checks(
     for venv in VENVS:
         python = envs_root / venv / "bin" / "python"
         checks.append(Check(f"torch:{venv}", [str(python), "-c", _torch_code(venv, device)]))
-
-    ultralytics_out = out / "ultralytics"
-    checks.append(
-        Check(
-            "ultralytics",
-            [
-                "refina",
-                "--engine",
-                "ultralytics",
-                "--model",
-                "yolo26n.yaml",
-                "--data",
-                f"{base_url}.ndjson",
-                "--train-args",
-                f"epochs={ULTRALYTICS_EPOCHS} imgsz=320 batch=4 workers=0 amp=False",
-                *device_args,
-                "--output",
-                str(ultralytics_out),
-                *work,
-            ],
-            expect=lambda: _csv_rows(ultralytics_out / "results.csv") == ULTRALYTICS_EPOCHS,
-        )
-    )
-    yolo_out = out / "yolo"
-    checks.append(
-        Check(
-            "yolo",
-            [
-                "refina",
-                "--engine",
-                "yolo",
-                "--model",
-                "yolo26n",
-                "--data",
-                str(coco8),
-                "--epochs",
-                "1",
-                "--max-steps",
-                "2",
-                "--imgsz",
-                "320",
-                "--batch",
-                "4",
-                "--workers",
-                "0",
-                "--no-amp",
-                *device_args,
-                "--output",
-                str(yolo_out),
-                *work,
-            ],
-            expect=lambda: (yolo_out / "weights" / "last.pt").is_file(),
-        )
-    )
     return checks
 
 
@@ -212,47 +95,12 @@ def run_checks(checks: list[Check]) -> int:
     return 1 if failed else 0
 
 
-class _QuietHandler(SimpleHTTPRequestHandler):
-    def log_message(self, *args):
-        pass
-
-
-def _unpack(source: Path, data: Path) -> Path:
-    if source.is_dir():
-        target = data / "coco8"
-        if not target.exists():
-            shutil.copytree(source, target)
-        return target
-    with zipfile.ZipFile(source) as archive:
-        archive.extractall(data)
-    return data / "coco8"
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--coco8", type=Path, required=True, help="coco8.zip or its directory")
     parser.add_argument("--device", default="0", help="GPU index, or cpu")
-    parser.add_argument("--out", type=Path, default=Path("/tmp/image-smoke"))
     args = parser.parse_args(argv)
-
-    data = args.out / "data"
-    data.mkdir(parents=True, exist_ok=True)
-    coco8 = _unpack(args.coco8, data)
-    if not (coco8 / "images").is_dir():
-        raise SystemExit(f"{args.coco8}: no coco8/images inside")
-
-    handler = partial(_QuietHandler, directory=str(data))
-    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        base_url = f"http://127.0.0.1:{server.server_address[1]}/coco8"
-        coco_to_ndjson(coco8, base_url, data / "coco8.ndjson")
-        envs_root = Path(os.environ.get("REFINA_ENVS_ROOT", "/opt/refina/.venvs"))
-        return run_checks(build_checks(coco8, base_url, args.device, args.out, envs_root))
-    finally:
-        server.shutdown()
-        server.server_close()
+    envs_root = Path(os.environ.get("REFINA_ENVS_ROOT", "/opt/refina/.venvs"))
+    return run_checks(build_checks(args.device, envs_root))
 
 
 if __name__ == "__main__":

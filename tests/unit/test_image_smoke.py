@@ -1,22 +1,15 @@
-"""scripts/image_smoke.py: NDJSON from coco8, the check list and the summary."""
+"""scripts/image_smoke.py: the check list and the summary."""
 
 from __future__ import annotations
 
 import importlib.util
-import json
 import sys
 from pathlib import Path
 
 import pytest
 
-pytest.importorskip("numpy")
-
-from refina.yolo.data import COCO80  # noqa: E402
-from refina.yolo.ndjson import looks_like_ndjson  # noqa: E402
-
 REPO = Path(__file__).resolve().parents[2]
-BASE_URL = "http://127.0.0.1:8000/coco8"
-ENGINES = ("swift", "trl", "easydistill", "yolo", "ultralytics")
+ENGINES = ("swift", "trl", "easydistill")
 
 
 @pytest.fixture(scope="module")
@@ -31,37 +24,8 @@ def smoke():
 
 
 def _checks(smoke, tmp_path: Path, device: str = "0"):
-    checks = smoke.build_checks(tmp_path / "coco8", BASE_URL, device, tmp_path / "out", tmp_path)
+    checks = smoke.build_checks(device, tmp_path)
     return {check.name: check for check in checks}, checks
-
-
-def test_coco_to_ndjson_writes_header_and_one_line_per_image(smoke, tmp_path):
-    root = tmp_path / "coco8"
-    for name in ("images/train/a.jpg", "images/val/b.jpg"):
-        (root / name).parent.mkdir(parents=True, exist_ok=True)
-        (root / name).write_bytes(b"\xff\xd8\xff")
-    (root / "labels" / "train").mkdir(parents=True)
-    (root / "labels" / "train" / "a.txt").write_text("45 0.5 0.5 0.2 0.2\n", encoding="utf-8")
-
-    out = smoke.coco_to_ndjson(root, BASE_URL, tmp_path / "coco8.ndjson")
-    lines = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
-    assert lines[0] == {
-        "type": "dataset",
-        "task": "detect",
-        "class_names": {str(i): name for i, name in enumerate(COCO80)},
-    }
-    assert lines[1] == {
-        "type": "image",
-        "file": "a.jpg",
-        "split": "train",
-        "url": "http://127.0.0.1:8000/coco8/images/train/a.jpg",
-        "annotations": {"boxes": [[45, 0.5, 0.5, 0.2, 0.2]]},
-    }
-    assert lines[2]["file"] == "b.jpg"
-    assert lines[2]["split"] == "val"
-    assert lines[2]["annotations"] == {"boxes": []}
-    assert len(lines) == 3
-    assert looks_like_ndjson(out)
 
 
 def test_build_checks_uses_the_required_values(smoke, tmp_path):
@@ -73,48 +37,15 @@ def test_build_checks_uses_the_required_values(smoke, tmp_path):
         "torch:swift",
         "torch:trl",
         "torch:easydistill",
-        "torch:yolo",
-        "torch:ultralytics",
-        "ultralytics",
-        "yolo",
     ]
     doctor = ["refina", "doctor"]
     for engine in ENGINES:
         doctor += ["--engine", engine]
     assert by_name["doctor"].argv == doctor
 
-    def pairs(argv):
-        return list(zip(argv, argv[1:], strict=False))
-
-    ultralytics = pairs(by_name["ultralytics"].argv)
-    for pair in (
-        ("--engine", "ultralytics"),
-        ("--model", "yolo26n.yaml"),
-        ("--data", f"{BASE_URL}.ndjson"),
-        ("--train-args", "epochs=2 imgsz=320 batch=4 workers=0 amp=False"),
-    ):
-        assert pair in ultralytics
-    yolo_argv = by_name["yolo"].argv
-    yolo = pairs(yolo_argv)
-    for pair in (
-        ("--engine", "yolo"),
-        ("--model", "yolo26n"),
-        ("--epochs", "1"),
-        ("--max-steps", "2"),
-        ("--imgsz", "320"),
-        ("--batch", "4"),
-        ("--workers", "0"),
-        ("--device", "0"),
-    ):
-        assert pair in yolo
-    assert "--no-amp" in yolo_argv
-
-    for name in ("torch:yolo", "torch:ultralytics"):
-        assert "import cv2" in by_name[name].argv[-1]
     assert "from swift.pipelines import sft_main" in by_name["torch:swift"].argv[-1]
     assert "from trl import DistillationConfig" in by_name["torch:trl"].argv[-1]
     assert "from easydistill.cli.main import" in by_name["torch:easydistill"].argv[-1]
-    assert "import ultralytics_platform" in by_name["torch:ultralytics"].argv[-1]
     for name in ("torch:core", "torch:swift"):
         assert "assert torch.cuda.is_available()" in by_name[name].argv[-1]
     for name in (f"torch:{venv}" for venv in ("core", *ENGINES)):
@@ -125,7 +56,6 @@ def test_build_checks_uses_the_required_values(smoke, tmp_path):
 def test_cpu_checks_do_not_require_a_gpu(smoke, tmp_path):
     by_name, _ = _checks(smoke, tmp_path, device="cpu")
     assert "assert torch.cuda.is_available()" not in by_name["torch:core"].argv[-1]
-    assert "--device" not in by_name["yolo"].argv
 
 
 def test_run_checks_reports_each_check_and_fails_if_any_fails(smoke, capsys):

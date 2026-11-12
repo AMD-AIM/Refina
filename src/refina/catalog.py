@@ -32,16 +32,6 @@ ENGINE_CATALOG: dict[str, dict[str, str]] = {
         "mode": "black-box generation followed by student SFT",
         "input": "seed prompts + teacher API + local or Hub student weights",
     },
-    "yolo": {
-        "framework": "built-in PyTorch YOLO (v5u / v8 / 11 / 26, n-x)",
-        "mode": "object detection training",
-        "input": "YOLO txt or COCO json dataset + model name or .pt weights",
-    },
-    "ultralytics": {
-        "framework": "Ultralytics (pip package), with Ultralytics Platform reporting",
-        "mode": "object detection training",
-        "input": "Platform NDJSON, data.yaml or zip + model name, .pt, .yaml or ul:// URI",
-    },
     "noop": {
         "framework": "built-in",
         "mode": "CLI test engine",
@@ -120,14 +110,6 @@ def model_catalog() -> dict[str, Any]:
                 "OpenAI-compatible teacher model IDs for EasyDistill",
             ],
             "validated_families": ["Qwen3", "Qwen3.5"],
-            "yolo": {
-                "names": [
-                    f"{family}{scale}"
-                    for family in ("yolov5", "yolov8", "yolo11", "yolo26")
-                    for scale in "nsmlx"
-                ],
-                "weights": "add .pt or --pretrained for official weights; or a local .pt",
-            },
             "constraints": [
                 "TRL teacher and student vocabularies must match",
                 "FSDP2 requires untied input/output embeddings; ZeRO-3 supports tied models",
@@ -151,11 +133,6 @@ def dataset_catalog() -> dict[str, Any]:
                 "ms://org/dataset",
             ],
             "formats": ["JSONL", "JSON", "Parquet", "Arrow"],
-            "detection_formats": [
-                "YOLO txt with data.yaml, or images/<split> + labels/<split>",
-                "COCO json (annotations/instances_<split>.json + images/<split>)",
-                "zip / tar archives of either",
-            ],
             "accepted_prompt_fields": ["instruction", "prompt", "question", "query", "problem"],
             "accepted_response_fields": [
                 "output",

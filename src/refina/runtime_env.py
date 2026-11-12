@@ -18,8 +18,6 @@ _ENGINE_ENV = {
     # Generation runs in the EasyDistill environment and launches Swift through
     # the explicit executable exported below.
     "easydistill-swift": "easydistill",
-    "yolo": "yolo",
-    "ultralytics": "ultralytics",
 }
 _WORKER_MARKER = "REFINA_ENGINE_WORKER"
 

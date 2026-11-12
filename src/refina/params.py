@@ -12,11 +12,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-ENGINES: tuple[str, ...] = (
-    "easydistill", "swift", "trl", "easydistill-swift", "yolo", "ultralytics", "noop",
-)
+ENGINES: tuple[str, ...] = ("easydistill", "swift", "trl", "easydistill-swift", "noop")
 
-ParamKind = Literal["str", "int", "float", "bool", "path", "dataset", "csv", "json"]
+ParamKind = Literal["str", "int", "float", "bool", "path", "dataset", "csv"]
 
 ALL = "*"
 
@@ -65,10 +63,6 @@ class Param:
 TEACHER_ENGINES = ("easydistill", "easydistill-swift")
 TRAIN_ENGINES = ("swift", "trl", "easydistill-swift")
 DISTRIBUTED_ENGINES = ("swift", "trl", "easydistill-swift")
-YOLO = ("yolo",)
-ULTRA = ("ultralytics",)
-DETECT = (*YOLO, *ULTRA)
-STUDENT_ENGINES = (*TRAIN_ENGINES, *DETECT)
 
 PARAMS: tuple[Param, ...] = (
     Param(
@@ -331,177 +325,15 @@ PARAMS: tuple[Param, ...] = (
     Param(
         flag="--max-steps",
         dest="max_steps",
-        help="Maximum optimizer steps (default: TRL 100; Swift framework default; "
-        "YOLO: stop after this many batches).",
+        help="Maximum optimizer steps (default: TRL 100; Swift framework default).",
         kind="int",
-        engines=(*TRAIN_ENGINES, *YOLO),
+        engines=TRAIN_ENGINES,
         env="REFINA_MAX_STEPS",
         config_paths=(
             ("swift", "swift.max_steps"),
             ("easydistill-swift", "swift.max_steps"),
             ("trl", "trl.max_steps"),
-            ("yolo", "yolo.max_steps"),
         ),
-    ),
-    Param(
-        flag="--train-args",
-        dest="train_args",
-        help="Ultralytics train() arguments as a JSON object, checked against the "
-        "accepted / ignored / rejected lists before any download.",
-        kind="json",
-        engines=ULTRA,
-        env="ULTRALYTICS_TRAIN_ARGS",
-        config_paths=(("ultralytics", "train_args"),),
-    ),
-    Param(
-        flag="--epochs",
-        dest="epochs",
-        help="YOLO training epochs (default: 100).",
-        kind="int",
-        engines=DETECT,
-        env="YOLO_EPOCHS",
-        config_paths=(("yolo", "yolo.epochs"), ("ultralytics", "train_args.epochs")),
-    ),
-    Param(
-        flag="--imgsz",
-        dest="imgsz",
-        help="YOLO square train/val image size (default: 640).",
-        kind="int",
-        engines=DETECT,
-        env="YOLO_IMGSZ",
-        config_paths=(("yolo", "yolo.imgsz"), ("ultralytics", "train_args.imgsz")),
-    ),
-    Param(
-        flag="--batch",
-        dest="batch",
-        help="YOLO batch size; -1 picks one for ~60%% of GPU memory (default: 16).",
-        kind="int",
-        engines=DETECT,
-        env="YOLO_BATCH",
-        config_paths=(("yolo", "yolo.batch"), ("ultralytics", "train_args.batch")),
-    ),
-    Param(
-        flag="--workers",
-        dest="workers",
-        help="YOLO dataloader worker processes (default: 8).",
-        kind="int",
-        engines=DETECT,
-        env="YOLO_WORKERS",
-        config_paths=(("yolo", "yolo.workers"), ("ultralytics", "train_args.workers")),
-    ),
-    Param(
-        flag="--pretrained",
-        dest="pretrained",
-        help="Start a named YOLO model from official weights (default: false; "
-        "a name ending in .pt implies true).",
-        kind="bool",
-        engines=YOLO,
-        env="YOLO_PRETRAINED",
-        config_paths=(("yolo", "yolo.pretrained"),),
-    ),
-    Param(
-        flag="--amp",
-        dest="amp",
-        help="YOLO mixed-precision training (default: true; use --no-amp for fp32).",
-        kind="bool",
-        engines=DETECT,
-        env="YOLO_AMP",
-        config_paths=(("yolo", "yolo.amp"), ("ultralytics", "train_args.amp")),
-    ),
-    Param(
-        flag="--optimizer",
-        dest="optimizer",
-        help="YOLO optimizer: auto, SGD, Adam or AdamW (default: auto).",
-        engines=DETECT,
-        env="YOLO_OPTIMIZER",
-        config_paths=(("yolo", "yolo.optimizer"), ("ultralytics", "train_args.optimizer")),
-    ),
-    Param(
-        flag="--close-mosaic",
-        dest="close_mosaic",
-        help="Disable YOLO mosaic for the final N epochs (default: 10).",
-        kind="int",
-        engines=DETECT,
-        env="YOLO_CLOSE_MOSAIC",
-        config_paths=(("yolo", "yolo.close_mosaic"), ("ultralytics", "train_args.close_mosaic")),
-    ),
-    Param(
-        flag="--model-sha256",
-        dest="model_sha256",
-        help="Expected sha256 of the --model weights file (sha256:<hex> or <hex>); "
-        "a mismatch exits 5.",
-        engines=DETECT,
-        env="STUDENT_MODEL_SHA256",
-    ),
-    Param(
-        flag="--report-to-url",
-        dest="report_to_url",
-        help="Ultralytics Platform base URL to stream metrics and weights to, e.g. "
-        "https://platform.ultralytics.com; the token comes from REPORT_TO_TOKEN only.",
-        engines=ULTRA,
-        env="REPORT_TO_API_BASE_URL",
-        config_paths=(("ultralytics", "report_to.api_base_url"),),
-    ),
-    Param(
-        flag="--report-to-model",
-        dest="report_to_model",
-        help="Platform model to report into, as owner/project/model.",
-        engines=ULTRA,
-        env="REPORT_TO_MODEL",
-        config_paths=(("ultralytics", "report_to.model"),),
-    ),
-    Param(
-        flag="--report-to-model-id",
-        dest="report_to_model_id",
-        help="Platform model id (assetId) of --report-to-model, so events bind to that record.",
-        engines=ULTRA,
-        env="REPORT_TO_MODEL_ID",
-        config_paths=(("ultralytics", "report_to.model_id"),),
-    ),
-    Param(
-        flag="--report-to-protocol",
-        dest="report_to_protocol",
-        help="webhook (default): Ultralytics' own Platform callback; rest: the public "
-        "upload + PATCH /api/models API, which needs --report-to-model-id.",
-        engines=ULTRA,
-        env="REPORT_TO_PROTOCOL",
-        config_paths=(("ultralytics", "report_to.protocol"),),
-    ),
-    Param(
-        flag="--report-to-metrics-every-epochs",
-        dest="report_to_metrics_every_epochs",
-        help="Report metrics every N epochs (default: 1), in both report protocols.",
-        kind="int",
-        engines=ULTRA,
-        env="REPORT_TO_METRICS_EVERY_EPOCHS",
-        config_paths=(("ultralytics", "report_to.metrics_every_epochs"),),
-    ),
-    Param(
-        flag="--report-to-checkpoint-every-epochs",
-        dest="report_to_checkpoint_every_epochs",
-        help="Upload an intermediate checkpoint every N epochs (default: 10; 0 turns it off), "
-        "in both report protocols.",
-        kind="int",
-        engines=ULTRA,
-        env="REPORT_TO_CHECKPOINT_EVERY_EPOCHS",
-        config_paths=(("ultralytics", "report_to.checkpoint_every_epochs"),),
-    ),
-    Param(
-        flag="--dataset-slug",
-        dest="dataset_slug",
-        help="Platform dataset as owner/dataset; used to re-sign an expired --data URL.",
-        engines=ULTRA,
-        env="DATASET_SLUG",
-        config_paths=(("ultralytics", "report_to.dataset_slug"),),
-    ),
-    Param(
-        flag="--dataset-version",
-        dest="dataset_version",
-        help="Platform dataset version for re-signing (default: current state).",
-        kind="int",
-        engines=ULTRA,
-        env="DATASET_VERSION",
-        config_paths=(("ultralytics", "report_to.dataset_version"),),
     ),
     Param(
         flag="--per-device-train-batch-size",
@@ -532,17 +364,14 @@ PARAMS: tuple[Param, ...] = (
     Param(
         flag="--learning-rate",
         dest="learning_rate",
-        help="Learning rate (default: Swift 1e-4; TRL 1e-5; YOLO 0.01, or chosen by "
-        "--optimizer auto).",
+        help="Learning rate (default: Swift 1e-4; TRL 1e-5).",
         kind="float",
-        engines=STUDENT_ENGINES,
+        engines=TRAIN_ENGINES,
         env="REFINA_LEARNING_RATE",
         config_paths=(
             ("swift", "swift.learning_rate"),
             ("easydistill-swift", "swift.learning_rate"),
             ("trl", "trl.learning_rate"),
-            ("yolo", "yolo.lr0"),
-            ("ultralytics", "train_args.lr0"),
         ),
     ),
     Param(
@@ -569,15 +398,14 @@ PARAMS: tuple[Param, ...] = (
     Param(
         flag="--logging-steps",
         dest="logging_steps",
-        help="Log interval (default: Swift 5; TRL 1; YOLO 10).",
+        help="Log interval (default: Swift 5; TRL 1).",
         kind="int",
-        engines=(*TRAIN_ENGINES, *YOLO),
+        engines=TRAIN_ENGINES,
         env="REFINA_LOGGING_STEPS",
         config_paths=(
             ("swift", "swift.logging_steps"),
             ("easydistill-swift", "swift.logging_steps"),
             ("trl", "trl.logging_steps"),
-            ("yolo", "yolo.log_interval"),
         ),
     ),
     Param(
@@ -697,7 +525,7 @@ PARAMS: tuple[Param, ...] = (
         dest="model_cache_dir",
         help="Where downloaded models are cached; defaults to <work-dir>/models.",
         kind="path",
-        engines=STUDENT_ENGINES,
+        engines=TRAIN_ENGINES,
         env="MODEL_CACHE_DIR",
     ),
     Param(
@@ -712,7 +540,7 @@ PARAMS: tuple[Param, ...] = (
         dest="resume",
         help="Resume from the latest checkpoint already under --output.",
         kind="bool",
-        engines=STUDENT_ENGINES,
+        engines=TRAIN_ENGINES,
         env="REFINA_RESUME",
     ),
     Param(
@@ -754,7 +582,7 @@ PARAMS: tuple[Param, ...] = (
         dest="device",
         help="Logical GPU index for a single-process training run (default: 0).",
         kind="int",
-        engines=STUDENT_ENGINES,
+        engines=TRAIN_ENGINES,
         env="REFINA_DEVICE",
         default=0,
     ),
@@ -794,8 +622,8 @@ PARAMS: tuple[Param, ...] = (
     Param(
         flag="--dataset-sha256",
         dest="dataset_sha256",
-        help="Expected sha256 of the downloaded dataset file (sha256:<hex>, the Platform "
-        "content_hash); a mismatch exits 5.",
+        help="Expected sha256 of the downloaded dataset file (sha256:<hex> or <hex>); "
+        "a mismatch exits 5.",
         env="DATASET_SHA256",
     ),
     Param(
@@ -852,11 +680,10 @@ PARAMS: tuple[Param, ...] = (
     Param(
         flag="--student",
         dest="student",
-        help="Student weights: local path, hf://org/model or ms://org/model; for yolo also "
-        "a name such as yolo26n, yolo11s.pt, yolov8m or yolov5lu.",
+        help="Student weights: local path, hf://org/model or ms://org/model.",
         kind="path",
-        engines=STUDENT_ENGINES,
-        required=STUDENT_ENGINES,
+        engines=TRAIN_ENGINES,
+        required=TRAIN_ENGINES,
         env="STUDENT_MODEL",
         aliases=("--model",),
     ),
@@ -873,11 +700,10 @@ PARAMS: tuple[Param, ...] = (
         flag="--dataset",
         dest="dataset",
         help="Training data: local path or network/Hub URI (SFT JSONL for swift, prompts for "
-        "trl, YOLO txt / COCO json directory, data.yaml or archive for yolo; also .ndjson "
-        "for yolo and ultralytics).",
+        "trl).",
         kind="dataset",
-        engines=("swift", "trl", *DETECT),
-        required=("swift", "trl", *DETECT),
+        engines=("swift", "trl"),
+        required=("swift", "trl"),
         config_fallback=True,
         env="DATASET_URI",
         aliases=("--data",),

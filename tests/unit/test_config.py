@@ -137,3 +137,24 @@ def test_engine_defaults_are_independent_copies():
 def test_set_requires_dotted_key_value_syntax():
     with pytest.raises(UsageError, match="dotted.path=value"):
         apply_config_overrides({}, ["broken"])
+
+
+def test_config_paths_stay_in_distillation_sections():
+    from refina import params as P
+
+    # Unknown top-level config sections are ignored rather than rejected, so the
+    # guard against the removed platform-reporting section is that no parameter
+    # writes outside the sections the distillation engines read.
+    roots = {path.split(".")[0] for p in P.PARAMS for _, path in p.config_paths}
+    assert roots <= {
+        "backend",
+        "dataset",
+        "easydistill",
+        "generation",
+        "job_type",
+        "lora",
+        "model_init",
+        "swift",
+        "teacher_model_init",
+        "trl",
+    }

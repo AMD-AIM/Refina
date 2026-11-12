@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
 import shutil
 import subprocess
@@ -43,7 +42,6 @@ def repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     files = {
         "docker/Dockerfile": "FROM scratch\n",
-        "src/refina/params.py": "PARAMS = ()\n",
         "third_party/trl/pyproject.toml": "",
         "third_party/easydistill/pyproject.toml": "",
         ".gitignore": "build/\n",
@@ -98,10 +96,6 @@ def _calls(docker: dict[str, Path]) -> list[str]:
     return docker["log"].read_text(encoding="utf-8").splitlines()
 
 
-def _params_sha(repo: Path) -> str:
-    return hashlib.sha256((repo / "src/refina/params.py").read_bytes()).hexdigest()
-
-
 def test_refuses_a_worktree_with_untracked_files(repo, docker):
     (repo / "stray.txt").write_text("x\n", encoding="utf-8")
     result = _run(repo, docker)
@@ -123,7 +117,6 @@ def test_no_push_builds_and_tags_without_pushing(repo, docker):
     assert result.returncode == 0, result.stderr
     sha = _git(repo, "rev-parse", "HEAD")
     tag = f"{_git(repo, 'rev-parse', '--short=12', 'HEAD')}-gfx1100"
-    params = _params_sha(repo)
     builds = [call for call in _calls(docker) if call.startswith("build ")]
     assert len(builds) == 1
     for text in (
@@ -131,11 +124,10 @@ def test_no_push_builds_and_tags_without_pushing(repo, docker):
         f"-t {IMAGE_REPO}:{tag}",
         f"--build-arg BASE_IMAGE={BASE}",
         f"--build-arg VCS_REF={sha}",
-        f"--build-arg PARAMS_SHA256={params}",
     ):
         assert text in builds[0]
     assert not [call for call in _calls(docker) if call.startswith("push")]
-    assert result.stdout.splitlines()[-1] == f"PARAMS_SHA256={params}"
+    assert result.stdout.splitlines()[-1] == f"IMAGE={IMAGE_REPO}:{tag}"
 
 
 def test_push_records_the_digest(repo, docker):
@@ -143,10 +135,9 @@ def test_push_records_the_digest(repo, docker):
     assert result.returncode == 0, result.stderr
     tag = f"{_git(repo, 'rev-parse', '--short=12', 'HEAD')}-gfx1100"
     assert f"push {IMAGE_REPO}:{tag}" in _calls(docker)
-    assert result.stdout.splitlines()[-3:] == [
+    assert result.stdout.splitlines()[-2:] == [
         f"IMAGE={IMAGE_REPO}:{tag}",
         f"DIGEST={DIGEST}",
-        f"PARAMS_SHA256={_params_sha(repo)}",
     ]
     row = (repo / "build" / "image-digests.tsv").read_text(encoding="utf-8").splitlines()[-1]
     fields = row.split("\t")

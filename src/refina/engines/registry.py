@@ -18,8 +18,6 @@ _MODULES: Final[dict[str, tuple[str, str]]] = {
     "swift": (".swift", "SwiftEngine"),
     "trl": (".trl", "TrlEngine"),
     "easydistill-swift": (".easydistill_swift", "EasyDistillSwiftEngine"),
-    "yolo": (".yolo", "YoloEngine"),
-    "ultralytics": (".ultralytics", "UltralyticsEngine"),
     "noop": (".noop", "NoopEngine"),
 }
 

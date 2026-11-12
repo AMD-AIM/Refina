@@ -43,7 +43,7 @@ def test_engine_command_replaces_the_process_with_the_engine_python(tmp_path: Pa
 def test_sigterm_reaches_the_engine_worker(tmp_path: Path):
     """The relaunched worker, not a waiting parent, must own the pid that gets SIGTERM."""
     envs = tmp_path / "envs"
-    venv = envs / "ultralytics"
+    venv = envs / "swift"
     (venv / "bin").mkdir(parents=True)
     (venv / ".refina-runtime").write_text(str(venv.resolve()), encoding="utf-8")
     worker = venv / "bin" / "python"
@@ -57,7 +57,7 @@ def test_sigterm_reaches_the_engine_worker(tmp_path: Path):
     worker.chmod(0o755)
     code = (
         "import sys; from refina.runtime_env import maybe_run_in_engine_environment as m; "
-        "sys.exit(m('ultralytics', ['--engine', 'ultralytics']) or 0)"
+        "sys.exit(m('swift', ['--engine', 'swift']) or 0)"
     )
     env = {k: v for k, v in os.environ.items() if k != "REFINA_ENGINE_WORKER"}
     env["REFINA_ENVS_ROOT"] = str(envs)

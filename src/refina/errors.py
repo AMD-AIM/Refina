@@ -19,7 +19,6 @@ class ExitCode(IntEnum):
     PREFLIGHT_FAILED = 7
     ENGINE_FAILED = 8
     OOM = 9
-    REPORT_FAILED = 10
     INTERNAL = 70
     CANCELLED = 130
 
@@ -67,13 +66,6 @@ class IntegrityError(DistillRunError):
     exit_code = ExitCode.DATASET_FETCH_FAILED
 
 
-class ReportError(DistillRunError):
-    """Training finished but the results could not be delivered to the platform."""
-
-    code = "ReportFailed"
-    exit_code = ExitCode.REPORT_FAILED
-
-
 class TeacherUnavailableError(DistillRunError):
     code = "TeacherDown"
     exit_code = ExitCode.TEACHER_UNAVAILABLE
@@ -100,13 +92,6 @@ class CancelledError(DistillRunError):
 
     def __init__(self, message: str = "cancelled by signal") -> None:
         super().__init__(message)
-
-
-class PlatformCancelledError(DistillRunError):
-    """The report_to platform stopped the run; its weights were still uploaded."""
-
-    code = "PlatformCancelled"
-    exit_code = ExitCode.CANCELLED
 
 
 class InternalError(DistillRunError):

@@ -52,3 +52,10 @@ def test_dataset_params_are_the_ones_that_get_resolved():
     assert {p.dest for p in P.dataset_params_for("easydistill")} == {"input"}
     assert {p.dest for p in P.dataset_params_for("swift")} == {"dataset"}
     assert {p.dest for p in P.dataset_params_for("easydistill-swift")} == {"input"}
+
+
+@pytest.mark.parametrize("flag", ["--max-steps", "--learning-rate", "--logging-steps"])
+def test_shared_training_flags_survive(flag: str):
+    param = next(p for p in P.PARAMS if p.flag == flag)
+    assert "trl" in param.engines
+    assert "swift" in param.engines

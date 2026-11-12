@@ -1,7 +1,6 @@
-"""Digest checks for downloaded datasets and weights.
+"""Digest checks for downloaded datasets.
 
-A digest is ``sha256:<hex>`` (the Platform's ``content_hash``) or a bare 64-digit
-hex string (``base_model.sha256``).
+A digest is ``sha256:<hex>`` or a bare 64-digit hex string.
 """
 
 from __future__ import annotations

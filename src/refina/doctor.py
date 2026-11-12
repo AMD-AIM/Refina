@@ -15,8 +15,6 @@ _ENGINES = {
     "swift": ("swift", "ms-swift", "swift"),
     "trl": ("trl", "trl", "accelerate"),
     "easydistill": ("easydistill", "easydistill", None),
-    "yolo": ("cv2", "opencv-python-headless", None),
-    "ultralytics": ("ultralytics", "ultralytics", None),
 }
 
 

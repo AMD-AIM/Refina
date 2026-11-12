@@ -4,10 +4,9 @@ Each event is one log line ending in ``REFINA_EVENT <json>``; the JSON always
 has ``event`` and ``time`` (UTC, RFC 3339)::
 
     REFINA_EVENT {"event": "stage", "stage": "downloading", "time": "..."}
-    REFINA_EVENT {"event": "progress", "epoch": 3, "total_epochs": 100, "eta_seconds": 412, "time": "..."}
     REFINA_EVENT {"event": "exit", "exit_code": 5, "code": "IntegrityCheckFailed", "stage": "downloading", ...}
 
-Stages, in order: ``downloading``, ``converting``, ``training``, ``uploading``.
+Stages, in order: ``downloading``, ``training``.
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 MARKER = "REFINA_EVENT"
-STAGES = ("downloading", "converting", "training", "uploading")
+STAGES = ("downloading", "training")
 
 logger = logging.getLogger("refina.events")
 # The service parses these lines, so LOG_LEVEL=WARNING must not hide them.
@@ -51,11 +50,6 @@ def stage(name: str) -> None:
 
 def current_stage() -> str | None:
     return _current["stage"]
-
-
-def progress(epoch: int, total_epochs: int, eta_seconds: float | None, **extra: Any) -> None:
-    emit("progress", epoch=epoch, total_epochs=total_epochs,
-         eta_seconds=None if eta_seconds is None else max(0, round(eta_seconds)), **extra)
 
 
 def finish(exit_code: int, code: str | None = None) -> None:
