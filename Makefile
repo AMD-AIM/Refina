@@ -19,7 +19,7 @@ dev:
 install: dev
 
 doctor:
-	$(PY) -m distill_run doctor
+	$(PY) -m refina doctor
 
 check: lint test
 

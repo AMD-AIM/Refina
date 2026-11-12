@@ -6,8 +6,8 @@ from types import ModuleType
 
 import pytest
 
-from distill_run.errors import ModelFetchError
-from distill_run.models import ModelSpec, resolve_model
+from refina.errors import ModelFetchError
+from refina.models import ModelSpec, resolve_model
 
 
 def test_local_model_needs_no_download(tmp_path: Path):

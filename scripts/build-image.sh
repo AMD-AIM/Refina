@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build, tag, push and record the gfx1100 distill-run image from a clean HEAD.
+# Build, tag, push and record the gfx1100 refina image from a clean HEAD.
 #
 #   scripts/build-image.sh [--no-push]
 #
@@ -13,7 +13,7 @@
 # docker's own output goes to stderr.
 set -euo pipefail
 
-IMAGE_REPO=${IMAGE_REPO:-ccr.ccs.tencentyun.com/radeon/distill-run}
+IMAGE_REPO=${IMAGE_REPO:-ccr.ccs.tencentyun.com/radeon/refina}
 BASE_IMAGE=${BASE_IMAGE:-docker.io/rocm/pytorch@sha256:4449f856653602317e4101a76fce599c7fcd58ccec2e539951fce5f73083179e}
 ENGINES=${ENGINES:-swift,trl,easydistill,yolo,ultralytics}
 PIP_INDEX_URL=${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple}
@@ -55,7 +55,7 @@ done
 
 sha=$(git rev-parse HEAD)
 tag="$(git rev-parse --short=12 HEAD)-gfx1100"
-params=$(sha256sum src/distill_run/params.py | cut -d' ' -f1)
+params=$(sha256sum src/refina/params.py | cut -d' ' -f1)
 image="$IMAGE_REPO:$tag"
 
 docker build -f docker/Dockerfile \

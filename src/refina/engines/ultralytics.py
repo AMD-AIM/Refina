@@ -6,7 +6,7 @@ The engine owns ``data``, ``model``, ``save_dir``, ``device``, ``project`` and
 ``name``.
 
 ``report_to.protocol: rest`` reports through the public REST API instead
-(:mod:`distill_run.platform_rest`). The default, ``webhook``, uses Ultralytics'
+(:mod:`refina.platform_rest`). The default, ``webhook``, uses Ultralytics'
 own Platform callback
 (``ultralytics/utils/callbacks/platform.py``): it is switched on by
 ``ULTRALYTICS_API_KEY`` plus ``project=owner/project`` and ``name=model``, and
@@ -308,8 +308,8 @@ def _setup_ultralytics(ctx: RunContext, report: ReportTarget | None) -> None:
             import ultralytics_platform  # noqa: F401
         except ImportError as exc:
             raise PreflightError(f"reporting needs ultralytics-platform and httpx: {exc}") from exc
-    redact.protect(LOGGER, logging.getLogger("distill_run"))
-    _install_fonts(os.environ.get("DISTILL_RUN_FONTS_DIR"), Path(USER_CONFIG_DIR))
+    redact.protect(LOGGER, logging.getLogger("refina"))
+    _install_fonts(os.environ.get("REFINA_FONTS_DIR"), Path(USER_CONFIG_DIR))
     weights = ensure_dir(Path(ctx.model_cache_dir) / "yolo")
     SETTINGS.update({
         "weights_dir": str(weights),
@@ -403,7 +403,7 @@ def _swap(chain: list, original, replacement) -> None:
 
 
 class _Hooks:
-    """Distill-run callbacks next to Ultralytics' own (ours run first for each event)."""
+    """Refina callbacks next to Ultralytics' own (ours run first for each event)."""
 
     def __init__(self, ctx: RunContext, report: ReportTarget | None, output: Path):
         self.ctx, self.report, self.output = ctx, report, output

@@ -58,7 +58,7 @@ def test_create_environment_sees_parent_venv_packages(setup_envs, parent, tmp_pa
     pth = Path(_purelib(python)) / setup_envs.BASE_PTH_NAME
     assert pth.read_text(encoding="utf-8").strip() == str(parent_lib)
     assert subprocess.run([str(python), "-c", "import r156i_probe"]).returncode == 0
-    assert (child / ".distill-run-runtime").is_file()
+    assert (child / ".refina-runtime").is_file()
 
 
 def test_base_constraints_pins_the_torch_family(setup_envs, tmp_path, monkeypatch):

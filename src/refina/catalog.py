@@ -179,13 +179,13 @@ def model_error_hint() -> str:
     paths = [item["path"] for item in discovered if item.get("status") is None]
     if paths:
         return "\navailable local models:\n" + "\n".join(f"  {path}" for path in paths)
-    return "\nrun `distill-run --models` to see supported model types and search roots"
+    return "\nrun `refina --models` to see supported model types and search roots"
 
 
 def dataset_error_hint() -> str:
     examples = dataset_catalog()["datasets"]["bundled_examples"]
     available = "\navailable bundled datasets:\n" + "\n".join(f"  {path}" for path in examples)
-    return available + "\nrun `distill-run --datasets` for supported sources and formats"
+    return available + "\nrun `refina --datasets` for supported sources and formats"
 
 
 def print_catalog(*, models: bool, datasets: bool, engines: bool) -> None:

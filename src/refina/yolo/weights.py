@@ -70,7 +70,7 @@ class _Unpickler(pickle.Unpickler):
         return _placeholder(module, name)
 
 
-_pickle_module = ModuleType("distill_run_restricted_pickle")
+_pickle_module = ModuleType("refina_restricted_pickle")
 _pickle_module.Unpickler = _Unpickler
 _pickle_module.load = lambda f, **kw: _Unpickler(f, **kw).load()
 _pickle_module.__dict__.update({k: getattr(pickle, k) for k in ("UnpicklingError", "dumps")})

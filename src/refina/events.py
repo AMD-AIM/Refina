@@ -1,11 +1,11 @@
 """Machine-readable progress lines for the service layer.
 
-Each event is one log line ending in ``DISTILL_EVENT <json>``; the JSON always
+Each event is one log line ending in ``REFINA_EVENT <json>``; the JSON always
 has ``event`` and ``time`` (UTC, RFC 3339)::
 
-    DISTILL_EVENT {"event": "stage", "stage": "downloading", "time": "..."}
-    DISTILL_EVENT {"event": "progress", "epoch": 3, "total_epochs": 100, "eta_seconds": 412, "time": "..."}
-    DISTILL_EVENT {"event": "exit", "exit_code": 5, "code": "IntegrityCheckFailed", "stage": "downloading", ...}
+    REFINA_EVENT {"event": "stage", "stage": "downloading", "time": "..."}
+    REFINA_EVENT {"event": "progress", "epoch": 3, "total_epochs": 100, "eta_seconds": 412, "time": "..."}
+    REFINA_EVENT {"event": "exit", "exit_code": 5, "code": "IntegrityCheckFailed", "stage": "downloading", ...}
 
 Stages, in order: ``downloading``, ``converting``, ``training``, ``uploading``.
 """
@@ -17,10 +17,10 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-MARKER = "DISTILL_EVENT"
+MARKER = "REFINA_EVENT"
 STAGES = ("downloading", "converting", "training", "uploading")
 
-logger = logging.getLogger("distill_run.events")
+logger = logging.getLogger("refina.events")
 # The service parses these lines, so LOG_LEVEL=WARNING must not hide them.
 logger.setLevel(logging.INFO)
 

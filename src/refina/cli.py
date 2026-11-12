@@ -1,4 +1,4 @@
-"""``distill-run``: one entrypoint, one run, one exit code.
+"""``refina``: one entrypoint, one run, one exit code.
 
 Flow: parse -> merge (args > env) -> load config -> cheap preflight -> resolve
 datasets to local paths -> run engine.
@@ -72,7 +72,7 @@ def _reject_multi_gpu(args: argparse.Namespace) -> None:
 def configure_logging(level: str | None = None) -> None:
     """Log through our own logger, line-buffered, ignoring the root logger.
 
-    The handler goes on the ``distill_run`` logger with propagation off, because
+    The handler goes on the ``refina`` logger with propagation off, because
     importing a framework can reconfigure root logging — ms-swift does, and it
     used to silence every line we logged after the first framework import.
     """
@@ -80,15 +80,15 @@ def configure_logging(level: str | None = None) -> None:
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is not None:
             reconfigure(line_buffering=True)
-    ours = logging.getLogger("distill_run")
+    ours = logging.getLogger("refina")
     configured = level or os.environ.get("LOG_LEVEL")
     rank = int(os.environ.get("RANK", os.environ.get("LOCAL_RANK", "0")))
     ours.setLevel((configured or ("INFO" if rank == 0 else "WARNING")).upper())
     ours.propagate = False
-    if not any(getattr(h, "_distill_run", False) for h in ours.handlers):
+    if not any(getattr(h, "_refina", False) for h in ours.handlers):
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATEFMT))
-        handler._distill_run = True  # type: ignore[attr-defined]
+        handler._refina = True  # type: ignore[attr-defined]
         handler.addFilter(SecretFilter())
         ours.handlers = [handler]
 
@@ -96,7 +96,7 @@ def configure_logging(level: str | None = None) -> None:
 def build_parser() -> argparse.ArgumentParser:
     """Derive the parser from the parameter table so the two cannot drift."""
     parser = argparse.ArgumentParser(
-        prog="distill-run",
+        prog="refina",
         description="Black-box and white-box distillation behind one entrypoint.",
     )
     for param in P.PARAMS:
@@ -127,9 +127,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(raw_argv)
     started = False
     try:
-        list_models = bool(args.list_models) or _env_enabled("DISTILL_LIST_MODELS")
-        list_datasets = bool(args.list_datasets) or _env_enabled("DISTILL_LIST_DATASETS")
-        list_engines = bool(args.list_engines) or _env_enabled("DISTILL_LIST_ENGINES")
+        list_models = bool(args.list_models) or _env_enabled("REFINA_LIST_MODELS")
+        list_datasets = bool(args.list_datasets) or _env_enabled("REFINA_LIST_DATASETS")
+        list_engines = bool(args.list_engines) or _env_enabled("REFINA_LIST_ENGINES")
         if list_models or list_datasets or list_engines:
             from .catalog import print_catalog
 
@@ -140,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             return int(ExitCode.OK)
         if args.show_default_config:
-            engine_name = args.engine or os.environ.get("DISTILL_ENGINE")
+            engine_name = args.engine or os.environ.get("REFINA_ENGINE")
             if engine_name not in P.ENGINES:
                 raise UsageError(
                     f"--show-default-config requires --engine ({', '.join(P.ENGINES)})"
@@ -148,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
             print(yaml.safe_dump(engine_defaults(engine_name), allow_unicode=True, sort_keys=False))
             return int(ExitCode.OK)
         _reject_multi_gpu(args)
-        engine_name = args.engine or os.environ.get("DISTILL_ENGINE")
+        engine_name = args.engine or os.environ.get("REFINA_ENGINE")
         if engine_name:
             relaunched = maybe_run_in_engine_environment(engine_name, raw_argv)
             if relaunched is not None:
@@ -184,13 +184,13 @@ def _finish(started: bool, exc: DistillRunError) -> int:
 def build_context(args: dict[str, Any]) -> RunContext:
     env = dict(os.environ)
 
-    engine_name = args.get("engine") or env.get("DISTILL_ENGINE")
+    engine_name = args.get("engine") or env.get("REFINA_ENGINE")
     if not engine_name:
-        raise UsageError("--engine is required (or set DISTILL_ENGINE)")
+        raise UsageError("--engine is required (or set REFINA_ENGINE)")
     if engine_name not in P.ENGINES:
         raise UsageError(
             f"unknown engine '{engine_name}'; supported engines: {', '.join(P.ENGINES)} "
-            "(run `distill-run --engines` for details)"
+            "(run `refina --engines` for details)"
         )
     args["engine"] = engine_name
 

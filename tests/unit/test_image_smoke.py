@@ -11,8 +11,8 @@ import pytest
 
 pytest.importorskip("numpy")
 
-from distill_run.yolo.data import COCO80  # noqa: E402
-from distill_run.yolo.ndjson import looks_like_ndjson  # noqa: E402
+from refina.yolo.data import COCO80  # noqa: E402
+from refina.yolo.ndjson import looks_like_ndjson  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 BASE_URL = "http://127.0.0.1:8000/coco8"
@@ -78,7 +78,7 @@ def test_build_checks_uses_the_required_values(smoke, tmp_path):
         "ultralytics",
         "yolo",
     ]
-    doctor = ["distill-run", "doctor"]
+    doctor = ["refina", "doctor"]
     for engine in ENGINES:
         doctor += ["--engine", engine]
     assert by_name["doctor"].argv == doctor
@@ -118,7 +118,7 @@ def test_build_checks_uses_the_required_values(smoke, tmp_path):
     for name in ("torch:core", "torch:swift"):
         assert "assert torch.cuda.is_available()" in by_name[name].argv[-1]
     for name in (f"torch:{venv}" for venv in ("core", *ENGINES)):
-        assert "import distill_run.cli" in by_name[name].argv[-1]
+        assert "import refina.cli" in by_name[name].argv[-1]
     assert by_name["torch:trl"].argv[0] == str(tmp_path / "trl" / "bin" / "python")
 
 

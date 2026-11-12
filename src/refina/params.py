@@ -20,7 +20,7 @@ ParamKind = Literal["str", "int", "float", "bool", "path", "dataset", "csv", "js
 
 ALL = "*"
 
-DEFAULT_WORK_DIR = os.environ.get("WORK_DIR") or str(Path.home() / ".cache" / "distill-run")
+DEFAULT_WORK_DIR = os.environ.get("WORK_DIR") or str(Path.home() / ".cache" / "refina")
 
 
 @dataclass(frozen=True)
@@ -76,7 +76,7 @@ PARAMS: tuple[Param, ...] = (
         dest="engine",
         help=f"Which engine to run: {' | '.join(ENGINES)}.",
         required=ENGINES,
-        env="DISTILL_ENGINE",
+        env="REFINA_ENGINE",
     ),
     Param(
         flag="--output",
@@ -97,49 +97,49 @@ PARAMS: tuple[Param, ...] = (
         flag="--config-json",
         dest="config_json",
         help="Inline JSON/YAML engine config; merged over built-in defaults and --config.",
-        env="DISTILL_CONFIG_JSON",
+        env="REFINA_CONFIG_JSON",
     ),
     Param(
         flag="--show-default-config",
         dest="show_default_config",
         help="Print the built-in config for --engine and exit.",
         kind="bool",
-        env="DISTILL_SHOW_DEFAULT_CONFIG",
+        env="REFINA_SHOW_DEFAULT_CONFIG",
     ),
     Param(
         flag="--models",
         dest="list_models",
         help="Print supported and locally discovered models, then exit.",
         kind="bool",
-        env="DISTILL_LIST_MODELS",
+        env="REFINA_LIST_MODELS",
     ),
     Param(
         flag="--datasets",
         dest="list_datasets",
         help="Print supported dataset sources, formats and schemas, then exit.",
         kind="bool",
-        env="DISTILL_LIST_DATASETS",
+        env="REFINA_LIST_DATASETS",
     ),
     Param(
         flag="--engines",
         dest="list_engines",
         help="Print supported distillation engines, then exit.",
         kind="bool",
-        env="DISTILL_LIST_ENGINES",
+        env="REFINA_LIST_ENGINES",
     ),
     Param(
         flag="--set",
         dest="config_overrides",
         help="Override any config key as dotted.path=value; may be repeated.",
         repeatable=True,
-        env="DISTILL_CONFIG_OVERRIDES",
+        env="REFINA_CONFIG_OVERRIDES",
     ),
     Param(
         flag="--job-type",
         dest="job_type",
         help="EasyDistill job type (default: instruct_distill).",
         engines=TEACHER_ENGINES,
-        env="DISTILL_JOB_TYPE",
+        env="REFINA_JOB_TYPE",
         config_paths=(
             ("easydistill", "job_type"),
             ("easydistill-swift", "easydistill.job_type"),
@@ -150,7 +150,7 @@ PARAMS: tuple[Param, ...] = (
         dest="backend_type",
         help="Teacher API backend type (default: openai).",
         engines=TEACHER_ENGINES,
-        env="DISTILL_BACKEND_TYPE",
+        env="REFINA_BACKEND_TYPE",
         config_paths=(
             ("easydistill", "backend.type"),
             ("easydistill-swift", "easydistill.backend.type"),
@@ -161,7 +161,7 @@ PARAMS: tuple[Param, ...] = (
         dest="system_prompt",
         help='Teacher system prompt (default: "You are a helpful assistant.").',
         engines=TEACHER_ENGINES,
-        env="DISTILL_SYSTEM_PROMPT",
+        env="REFINA_SYSTEM_PROMPT",
         config_paths=(
             ("easydistill", "generation.system_prompt"),
             ("easydistill-swift", "easydistill.generation.system_prompt"),
@@ -173,7 +173,7 @@ PARAMS: tuple[Param, ...] = (
         help="Generation/distillation temperature (default: EasyDistill 0.7; TRL 1.0).",
         kind="float",
         engines=("easydistill", "trl", "easydistill-swift"),
-        env="DISTILL_TEMPERATURE",
+        env="REFINA_TEMPERATURE",
         config_paths=(
             ("easydistill", "generation.temperature"),
             ("easydistill-swift", "easydistill.generation.temperature"),
@@ -186,7 +186,7 @@ PARAMS: tuple[Param, ...] = (
         help="Maximum generated teacher tokens (default: 512; easydistill-swift: 1024).",
         kind="int",
         engines=TEACHER_ENGINES,
-        env="DISTILL_MAX_TOKENS",
+        env="REFINA_MAX_TOKENS",
         config_paths=(
             ("easydistill", "generation.max_tokens"),
             ("easydistill-swift", "easydistill.generation.max_tokens"),
@@ -198,7 +198,7 @@ PARAMS: tuple[Param, ...] = (
         help="Concurrent teacher requests (default: 4).",
         kind="int",
         engines=TEACHER_ENGINES,
-        env="DISTILL_MAX_WORKERS",
+        env="REFINA_MAX_WORKERS",
         config_paths=(
             ("easydistill", "generation.max_workers"),
             ("easydistill-swift", "easydistill.generation.max_workers"),
@@ -210,7 +210,7 @@ PARAMS: tuple[Param, ...] = (
         help="Show EasyDistill progress (default: true; use --no-show-progress to disable).",
         kind="bool",
         engines=TEACHER_ENGINES,
-        env="DISTILL_SHOW_PROGRESS",
+        env="REFINA_SHOW_PROGRESS",
         config_paths=(
             ("easydistill", "generation.show_progress"),
             ("easydistill-swift", "easydistill.generation.show_progress"),
@@ -221,7 +221,7 @@ PARAMS: tuple[Param, ...] = (
         dest="instruction_key",
         help="Seed JSON instruction field (default: instruction).",
         engines=TEACHER_ENGINES,
-        env="DISTILL_INSTRUCTION_KEY",
+        env="REFINA_INSTRUCTION_KEY",
         config_paths=(
             ("easydistill", "dataset.instruction_key"),
             ("easydistill-swift", "easydistill.dataset.instruction_key"),
@@ -233,7 +233,7 @@ PARAMS: tuple[Param, ...] = (
         help="Skip empty instructions (default: true; use --no-skip-empty to disable).",
         kind="bool",
         engines=TEACHER_ENGINES,
-        env="DISTILL_SKIP_EMPTY",
+        env="REFINA_SKIP_EMPTY",
         config_paths=(
             ("easydistill", "dataset.skip_empty"),
             ("easydistill-swift", "easydistill.dataset.skip_empty"),
@@ -245,7 +245,7 @@ PARAMS: tuple[Param, ...] = (
         help="Minimum instruction length (default: 10).",
         kind="int",
         engines=TEACHER_ENGINES,
-        env="DISTILL_MIN_LENGTH",
+        env="REFINA_MIN_LENGTH",
         config_paths=(
             ("easydistill", "dataset.min_length"),
             ("easydistill-swift", "easydistill.dataset.min_length"),
@@ -256,7 +256,7 @@ PARAMS: tuple[Param, ...] = (
         dest="tuner_type",
         help="Swift tuner type (default: lora).",
         engines=("swift", "easydistill-swift"),
-        env="DISTILL_TUNER_TYPE",
+        env="REFINA_TUNER_TYPE",
         config_paths=(
             ("swift", "swift.tuner_type"),
             ("easydistill-swift", "swift.tuner_type"),
@@ -268,7 +268,7 @@ PARAMS: tuple[Param, ...] = (
         help="LoRA rank (default: 8).",
         kind="int",
         engines=TRAIN_ENGINES,
-        env="DISTILL_LORA_RANK",
+        env="REFINA_LORA_RANK",
         config_paths=(
             ("swift", "swift.lora_rank"),
             ("easydistill-swift", "swift.lora_rank"),
@@ -281,7 +281,7 @@ PARAMS: tuple[Param, ...] = (
         help="LoRA alpha (default: 32).",
         kind="int",
         engines=TRAIN_ENGINES,
-        env="DISTILL_LORA_ALPHA",
+        env="REFINA_LORA_ALPHA",
         config_paths=(
             ("swift", "swift.lora_alpha"),
             ("easydistill-swift", "swift.lora_alpha"),
@@ -294,7 +294,7 @@ PARAMS: tuple[Param, ...] = (
         help="TRL LoRA dropout (default: 0.05).",
         kind="float",
         engines=("trl",),
-        env="DISTILL_LORA_DROPOUT",
+        env="REFINA_LORA_DROPOUT",
         config_paths=(("trl", "lora.lora_dropout"),),
     ),
     Param(
@@ -303,7 +303,7 @@ PARAMS: tuple[Param, ...] = (
         help="Enable TRL LoRA (default: true; use --no-lora-enabled for full tuning).",
         kind="bool",
         engines=("trl",),
-        env="DISTILL_LORA_ENABLED",
+        env="REFINA_LORA_ENABLED",
         config_paths=(("trl", "lora.enabled"),),
     ),
     Param(
@@ -312,7 +312,7 @@ PARAMS: tuple[Param, ...] = (
         help="Comma-separated TRL LoRA modules (default: q/k/v/o/gate/up/down projections).",
         kind="csv",
         engines=("trl",),
-        env="DISTILL_TARGET_MODULES",
+        env="REFINA_TARGET_MODULES",
         config_paths=(("trl", "lora.target_modules"),),
     ),
     Param(
@@ -321,7 +321,7 @@ PARAMS: tuple[Param, ...] = (
         help="Training epochs (default: Swift 3; TRL 1).",
         kind="float",
         engines=TRAIN_ENGINES,
-        env="DISTILL_NUM_TRAIN_EPOCHS",
+        env="REFINA_NUM_TRAIN_EPOCHS",
         config_paths=(
             ("swift", "swift.num_train_epochs"),
             ("easydistill-swift", "swift.num_train_epochs"),
@@ -335,7 +335,7 @@ PARAMS: tuple[Param, ...] = (
         "YOLO: stop after this many batches).",
         kind="int",
         engines=(*TRAIN_ENGINES, *YOLO),
-        env="DISTILL_MAX_STEPS",
+        env="REFINA_MAX_STEPS",
         config_paths=(
             ("swift", "swift.max_steps"),
             ("easydistill-swift", "swift.max_steps"),
@@ -509,7 +509,7 @@ PARAMS: tuple[Param, ...] = (
         help="Per-device train batch size (default: 1).",
         kind="int",
         engines=TRAIN_ENGINES,
-        env="DISTILL_PER_DEVICE_TRAIN_BATCH_SIZE",
+        env="REFINA_PER_DEVICE_TRAIN_BATCH_SIZE",
         config_paths=(
             ("swift", "swift.per_device_train_batch_size"),
             ("easydistill-swift", "swift.per_device_train_batch_size"),
@@ -522,7 +522,7 @@ PARAMS: tuple[Param, ...] = (
         help="Gradient accumulation steps (default: 8).",
         kind="int",
         engines=TRAIN_ENGINES,
-        env="DISTILL_GRADIENT_ACCUMULATION_STEPS",
+        env="REFINA_GRADIENT_ACCUMULATION_STEPS",
         config_paths=(
             ("swift", "swift.gradient_accumulation_steps"),
             ("easydistill-swift", "swift.gradient_accumulation_steps"),
@@ -536,7 +536,7 @@ PARAMS: tuple[Param, ...] = (
         "--optimizer auto).",
         kind="float",
         engines=STUDENT_ENGINES,
-        env="DISTILL_LEARNING_RATE",
+        env="REFINA_LEARNING_RATE",
         config_paths=(
             ("swift", "swift.learning_rate"),
             ("easydistill-swift", "swift.learning_rate"),
@@ -551,7 +551,7 @@ PARAMS: tuple[Param, ...] = (
         help="Swift maximum sequence length (default: 2048).",
         kind="int",
         engines=("swift", "easydistill-swift"),
-        env="DISTILL_MAX_LENGTH",
+        env="REFINA_MAX_LENGTH",
         config_paths=(
             ("swift", "swift.max_length"),
             ("easydistill-swift", "swift.max_length"),
@@ -563,7 +563,7 @@ PARAMS: tuple[Param, ...] = (
         help="TRL maximum generated completion length (default: 256).",
         kind="int",
         engines=("trl",),
-        env="DISTILL_MAX_COMPLETION_LENGTH",
+        env="REFINA_MAX_COMPLETION_LENGTH",
         config_paths=(("trl", "trl.max_completion_length"),),
     ),
     Param(
@@ -572,7 +572,7 @@ PARAMS: tuple[Param, ...] = (
         help="Log interval (default: Swift 5; TRL 1; YOLO 10).",
         kind="int",
         engines=(*TRAIN_ENGINES, *YOLO),
-        env="DISTILL_LOGGING_STEPS",
+        env="REFINA_LOGGING_STEPS",
         config_paths=(
             ("swift", "swift.logging_steps"),
             ("easydistill-swift", "swift.logging_steps"),
@@ -586,7 +586,7 @@ PARAMS: tuple[Param, ...] = (
         help="Checkpoint interval (default: 200).",
         kind="int",
         engines=TRAIN_ENGINES,
-        env="DISTILL_SAVE_STEPS",
+        env="REFINA_SAVE_STEPS",
         config_paths=(
             ("swift", "swift.save_steps"),
             ("easydistill-swift", "swift.save_steps"),
@@ -599,7 +599,7 @@ PARAMS: tuple[Param, ...] = (
         help="Maximum retained checkpoints (default: 2).",
         kind="int",
         engines=TRAIN_ENGINES,
-        env="DISTILL_SAVE_TOTAL_LIMIT",
+        env="REFINA_SAVE_TOTAL_LIMIT",
         config_paths=(
             ("swift", "swift.save_total_limit"),
             ("easydistill-swift", "swift.save_total_limit"),
@@ -612,7 +612,7 @@ PARAMS: tuple[Param, ...] = (
         help="Enable gradient checkpointing (default: true; use --no-gradient-checkpointing).",
         kind="bool",
         engines=TRAIN_ENGINES,
-        env="DISTILL_GRADIENT_CHECKPOINTING",
+        env="REFINA_GRADIENT_CHECKPOINTING",
         config_paths=(
             ("swift", "swift.gradient_checkpointing"),
             ("easydistill-swift", "swift.gradient_checkpointing"),
@@ -625,7 +625,7 @@ PARAMS: tuple[Param, ...] = (
         help="Enable TRL bfloat16 training (default: true; use --no-bf16 to disable).",
         kind="bool",
         engines=("trl",),
-        env="DISTILL_BF16",
+        env="REFINA_BF16",
         config_paths=(("trl", "trl.bf16"),),
     ),
     Param(
@@ -634,7 +634,7 @@ PARAMS: tuple[Param, ...] = (
         help="TRL distillation loss weight (default: 0.5).",
         kind="float",
         engines=("trl",),
-        env="DISTILL_BETA",
+        env="REFINA_BETA",
         config_paths=(("trl", "trl.beta"),),
     ),
     Param(
@@ -642,7 +642,7 @@ PARAMS: tuple[Param, ...] = (
         dest="torch_dtype",
         help="Student model dtype (default: bfloat16).",
         engines=TRAIN_ENGINES,
-        env="DISTILL_TORCH_DTYPE",
+        env="REFINA_TORCH_DTYPE",
         config_paths=(
             ("swift", "swift.torch_dtype"),
             ("easydistill-swift", "swift.torch_dtype"),
@@ -654,7 +654,7 @@ PARAMS: tuple[Param, ...] = (
         dest="teacher_torch_dtype",
         help="TRL teacher model dtype (default: bfloat16).",
         engines=("trl",),
-        env="DISTILL_TEACHER_TORCH_DTYPE",
+        env="REFINA_TEACHER_TORCH_DTYPE",
         config_paths=(("trl", "teacher_model_init.torch_dtype"),),
     ),
     Param(
@@ -663,7 +663,7 @@ PARAMS: tuple[Param, ...] = (
         help="Trust student model repository code (default: true; use --no-trust-remote-code).",
         kind="bool",
         engines=("trl",),
-        env="DISTILL_TRUST_REMOTE_CODE",
+        env="REFINA_TRUST_REMOTE_CODE",
         config_paths=(("trl", "model_init.trust_remote_code"),),
     ),
     Param(
@@ -675,7 +675,7 @@ PARAMS: tuple[Param, ...] = (
         ),
         kind="bool",
         engines=("trl",),
-        env="DISTILL_TEACHER_TRUST_REMOTE_CODE",
+        env="REFINA_TEACHER_TRUST_REMOTE_CODE",
         config_paths=(("trl", "teacher_model_init.trust_remote_code"),),
     ),
     Param(
@@ -713,7 +713,7 @@ PARAMS: tuple[Param, ...] = (
         help="Resume from the latest checkpoint already under --output.",
         kind="bool",
         engines=STUDENT_ENGINES,
-        env="DISTILL_RESUME",
+        env="REFINA_RESUME",
     ),
     Param(
         flag="--num-processes",
@@ -721,7 +721,7 @@ PARAMS: tuple[Param, ...] = (
         help="Local training process/GPU count (default: 1); TRL self-launches Accelerate above 1.",
         kind="int",
         engines=DISTRIBUTED_ENGINES,
-        env="DISTILL_NUM_PROCESSES",
+        env="REFINA_NUM_PROCESSES",
         aliases=("--nproc-per-node",),
         default=1,
     ),
@@ -730,7 +730,7 @@ PARAMS: tuple[Param, ...] = (
         dest="distributed_strategy",
         help="TRL launcher strategy: fsdp2, zero1, zero2 or zero3 (default: zero3).",
         engines=("trl",),
-        env="DISTILL_DISTRIBUTED_STRATEGY",
+        env="REFINA_DISTRIBUTED_STRATEGY",
         default="zero3",
     ),
     Param(
@@ -755,7 +755,7 @@ PARAMS: tuple[Param, ...] = (
         help="Logical GPU index for a single-process training run (default: 0).",
         kind="int",
         engines=STUDENT_ENGINES,
-        env="DISTILL_DEVICE",
+        env="REFINA_DEVICE",
         default=0,
     ),
     Param(

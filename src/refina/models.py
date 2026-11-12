@@ -49,7 +49,7 @@ def _fetch_huggingface(spec: ModelSpec, staging: Path) -> Path:
         from huggingface_hub import snapshot_download
     except ImportError as exc:
         raise ModelFetchError(
-            "hf:// models need huggingface_hub; install the distill-run hub dependencies"
+            "hf:// models need huggingface_hub; install the refina hub dependencies"
         ) from exc
 
     repo_id = spec.uri[len("hf://") :].strip("/")

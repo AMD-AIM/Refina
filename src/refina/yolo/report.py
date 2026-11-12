@@ -14,7 +14,7 @@ import math
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger("distill_run.yolo")
+logger = logging.getLogger("refina.yolo")
 
 LOSSES = ("box_loss", "cls_loss", "dfl_loss")
 METRICS = ("precision", "recall", "mAP50", "mAP50-95")

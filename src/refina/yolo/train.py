@@ -34,7 +34,7 @@ from .metrics import DetectionMetrics, end2end_filter, non_max_suppression
 from .model import DetectionModel
 from .report import LOSSES, TrainingLog, epoch_row
 
-logger = logging.getLogger("distill_run.yolo")
+logger = logging.getLogger("refina.yolo")
 
 AUG_KEYS = ("hsv_h", "hsv_s", "hsv_v", "degrees", "translate", "scale", "shear", "fliplr", "mosaic")
 
@@ -462,7 +462,7 @@ class Trainer:
         best = torch.load(self.weights_dir / "best.pt", map_location="cpu", weights_only=True)
         meta = {k: v for k, v in best.items() if k not in {"state_dict", "train_config"}}
         config = self.save_dir / "config.json"
-        config.write_text(json.dumps({**meta, "format": "distill-run-yolo"}, indent=2),
+        config.write_text(json.dumps({**meta, "format": "refina-yolo"}, indent=2),
                           encoding="utf-8")
         artifacts = [self.weights_dir / "best.pt", self.weights_dir / "last.pt", config]
         try:

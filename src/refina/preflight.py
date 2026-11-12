@@ -27,7 +27,7 @@ MIN_FREE_BYTES = 1 << 30
 def check_writable(path: Path, role: str) -> None:
     try:
         ensure_dir(path)
-        probe = path / f".distill-run-write-probe-{os.getpid()}"
+        probe = path / f".refina-write-probe-{os.getpid()}"
         probe.touch()
         probe.unlink()
     except OSError as exc:

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""In-container smoke for the distill-run image.
+"""In-container smoke for the refina image.
 
-Runs, in order: the shell tools the RC wrapper needs, ``distill-run doctor`` for all
+Runs, in order: the shell tools the RC wrapper needs, ``refina doctor`` for all
 five engines, ROCm Torch, the GPU (unless ``--device cpu``) and an importable
-distill-run CLI in every venv, a
+refina CLI in every venv, a
 2-epoch ``--engine ultralytics`` run on coco8 served as Platform NDJSON over local
 HTTP, and a 2-step ``--engine yolo`` run on the coco8 directory. Each check prints
 ``IMAGE_SMOKE <name> exit=<n> seconds=<s>``; the last line is
@@ -45,7 +45,7 @@ class Check:
 
 def coco_to_ndjson(root: Path, base_url: str, out: Path) -> Path:
     """Write a YOLO txt tree (``images/<split>``, ``labels/<split>``) as Platform NDJSON."""
-    from distill_run.yolo.data import COCO80
+    from refina.yolo.data import COCO80
 
     records: list[dict] = [
         {
@@ -95,7 +95,7 @@ FRAMEWORK_IMPORTS = {
 
 
 def _torch_code(venv: str, device: str) -> str:
-    lines = ["import torch", "import distill_run.cli", *FRAMEWORK_IMPORTS.get(venv, ())]
+    lines = ["import torch", "import refina.cli", *FRAMEWORK_IMPORTS.get(venv, ())]
     lines += [
         "assert torch.version.hip, f'not a ROCm build: {torch.__version__}'",
         "ok = torch.cuda.is_available()",
@@ -121,7 +121,7 @@ def build_checks(
 ) -> list[Check]:
     device_args = [] if device == "cpu" else ["--device", device]
     work = ["--work-dir", str(out / "work")]
-    doctor = ["distill-run", "doctor"]
+    doctor = ["refina", "doctor"]
     for engine in ENGINES:
         doctor += ["--engine", engine]
     checks = [
@@ -140,7 +140,7 @@ def build_checks(
         Check(
             "ultralytics",
             [
-                "distill-run",
+                "refina",
                 "--engine",
                 "ultralytics",
                 "--model",
@@ -162,7 +162,7 @@ def build_checks(
         Check(
             "yolo",
             [
-                "distill-run",
+                "refina",
                 "--engine",
                 "yolo",
                 "--model",
@@ -248,7 +248,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         base_url = f"http://127.0.0.1:{server.server_address[1]}/coco8"
         coco_to_ndjson(coco8, base_url, data / "coco8.ndjson")
-        envs_root = Path(os.environ.get("DISTILL_RUN_ENVS_ROOT", "/opt/distill-run/.venvs"))
+        envs_root = Path(os.environ.get("REFINA_ENVS_ROOT", "/opt/refina/.venvs"))
         return run_checks(build_checks(coco8, base_url, args.device, args.out, envs_root))
     finally:
         server.shutdown()

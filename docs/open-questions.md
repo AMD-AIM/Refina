@@ -2,7 +2,7 @@
 
 ## Runtime configuration delivery
 
-When distill-run is packaged as an image, decide how an upper-level scheduler
+When refina is packaged as an image, decide how an upper-level scheduler
 delivers per-job training and Accelerate configuration to the container.
 
 Topics for the follow-up discussion:

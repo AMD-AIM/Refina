@@ -80,7 +80,7 @@ class EasyDistillEngine(Engine):
         return RunResult(artifacts=[output], message=f"{produced} SFT rows at {output}")
 
     def _dispatch(self, job_type: str, config_path: Path) -> None:
-        if os.environ.get("DISTILL_EASYDISTILL_MODE", "library").lower() == "subprocess":
+        if os.environ.get("REFINA_EASYDISTILL_MODE", "library").lower() == "subprocess":
             self._run_subprocess(config_path)
             return
         try:

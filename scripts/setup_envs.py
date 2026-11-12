@@ -21,7 +21,7 @@ SOURCES = {
     "easydistill": ROOT / "third_party" / "easydistill",
 }
 SUPPORTED_ENGINES = ("swift", "trl", "easydistill", "yolo", "ultralytics")
-BASE_PTH_NAME = "_distill_run_base.pth"
+BASE_PTH_NAME = "_refina_base.pth"
 PINNED_BASE_PACKAGES = ("torch", "torchvision", "torchaudio", "triton", "vllm")
 
 
@@ -81,7 +81,7 @@ def create_environment(path: Path, base_python: str) -> Path:
     if base is not None:
         pth = Path(_purelib(str(python))) / BASE_PTH_NAME
         pth.write_text(f"{base}\n", encoding="utf-8")
-    (path / ".distill-run-runtime").write_text(str(path.resolve()) + "\n", encoding="utf-8")
+    (path / ".refina-runtime").write_text(str(path.resolve()) + "\n", encoding="utf-8")
     return python
 
 
@@ -236,7 +236,7 @@ def main() -> int:
         python = create_environment(ENVS / name, args.python)
         install_engine(name, python, args, constraints)
     write_lock(args.profile, engines, args.python, core_dir)
-    doctor = [str(core_python), "-m", "distill_run", "doctor"]
+    doctor = [str(core_python), "-m", "refina", "doctor"]
     for name in engines:
         doctor += ["--engine", name]
     run(doctor)

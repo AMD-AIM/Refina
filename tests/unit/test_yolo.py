@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from distill_run import params as P
-from distill_run.config import merge_sources
+from refina import params as P
+from refina.config import merge_sources
 
 np = pytest.importorskip("numpy")
 
-from distill_run.yolo.data import DataFormatError, load_detection_data  # noqa: E402
-from distill_run.yolo.model import parse_name, weights_filename  # noqa: E402
+from refina.yolo.data import DataFormatError, load_detection_data  # noqa: E402
+from refina.yolo.model import parse_name, weights_filename  # noqa: E402
 
 
 @pytest.mark.parametrize(
@@ -157,7 +157,7 @@ def test_ndjson_is_downloaded_split_and_cached_across_signatures(tmp_path: Path,
 
 
 def test_ndjson_download_failure_and_unsupported_task(tmp_path: Path, image_server):
-    from distill_run.errors import DatasetFetchError
+    from refina.errors import DatasetFetchError
 
     with pytest.raises(DatasetFetchError, match="downloaded 10/11"):
         manifest = _manifest(tmp_path / "b.ndjson", image_server, sig="x", count=11)
@@ -170,7 +170,7 @@ def test_ndjson_download_failure_and_unsupported_task(tmp_path: Path, image_serv
 def test_training_log_keeps_columns_fixed_and_truncates_on_resume(tmp_path: Path):
     import csv
 
-    from distill_run.yolo.report import COLUMNS, TrainingLog, epoch_row
+    from refina.yolo.report import COLUMNS, TrainingLog, epoch_row
 
     log = TrainingLog(tmp_path, 0)
     metrics = {"precision": 0.5, "recall": 0.4, "mAP50": 0.3, "mAP50-95": float("nan")}
@@ -199,7 +199,7 @@ torch = pytest.importorskip("torch")
 @pytest.mark.parametrize(("family", "params"), [("yolov8", 3157200), ("yolo11", 2624080),
                                                 ("yolo26", 2572280)])
 def test_nano_parameter_counts_match_published(family, params):
-    from distill_run.yolo.model import DetectionModel
+    from refina.yolo.model import DetectionModel
 
     model = DetectionModel(family, "n", 80)
     assert sum(p.numel() for p in model.parameters()) == params
@@ -208,8 +208,8 @@ def test_nano_parameter_counts_match_published(family, params):
 
 @pytest.mark.parametrize("family", ["yolov5", "yolo26"])
 def test_loss_is_finite_and_backpropagates(family):
-    from distill_run.yolo.loss import build_loss
-    from distill_run.yolo.model import DetectionModel
+    from refina.yolo.loss import build_loss
+    from refina.yolo.model import DetectionModel
 
     model = DetectionModel(family, "n", 3).train()
     loss_fn = build_loss(model, {"box": 7.5, "cls": 0.5, "dfl": 1.5}, epochs=2)
@@ -221,8 +221,8 @@ def test_loss_is_finite_and_backpropagates(family):
 
 
 def test_own_checkpoint_round_trip(tmp_path: Path):
-    from distill_run.yolo.model import DetectionModel
-    from distill_run.yolo.weights import apply_state_dict, load_checkpoint
+    from refina.yolo.model import DetectionModel
+    from refina.yolo.weights import apply_state_dict, load_checkpoint
 
     src = DetectionModel("yolov8", "n", 4)
     torch.save({"family": "yolov8", "scale": "n", "nc": 4, "state_dict": src.state_dict()},

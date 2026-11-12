@@ -2,19 +2,19 @@
 
 ## What it is
 
-`ccr.ccs.tencentyun.com/radeon/distill-run` is the gfx1100 (Radeon PRO W7900 /
-W7900D) training image for `distill-run`. It is built from `docker/Dockerfile`
+`ccr.ccs.tencentyun.com/radeon/refina` is the gfx1100 (Radeon PRO W7900 /
+W7900D) training image for `refina`. It is built from `docker/Dockerfile`
 by `scripts/build-image.sh`, from a clean checkout, so every tag maps to one
 commit of this repository and one base image digest. The image holds the core
 CLI and one venv per engine:
 
 ```text
-/opt/distill-run/.venvs/core          distill-run CLI (on PATH)
-/opt/distill-run/.venvs/swift         ms-swift
-/opt/distill-run/.venvs/trl           TRL fork from third_party/trl
-/opt/distill-run/.venvs/easydistill   EasyDistill from third_party/easydistill
-/opt/distill-run/.venvs/yolo          built-in YOLO trainer
-/opt/distill-run/.venvs/ultralytics   Ultralytics
+/opt/refina/.venvs/core          refina CLI (on PATH)
+/opt/refina/.venvs/swift         ms-swift
+/opt/refina/.venvs/trl           TRL fork from third_party/trl
+/opt/refina/.venvs/easydistill   EasyDistill from third_party/easydistill
+/opt/refina/.venvs/yolo          built-in YOLO trainer
+/opt/refina/.venvs/ultralytics   Ultralytics
 ```
 
 It is a single-GPU image: one container, one visible GPU.
@@ -34,11 +34,11 @@ triton `3.6.0+rocm7.2.4.git4ed88892`. The base is pinned by digest in
 
 The previous image was built on a personal-registry vLLM image with a ROCm
 7.14 nightly and torch `2.13.0a0`. That base has no build recipe of its own,
-and distill-run does not use vLLM, so this image uses AMD's released ROCm
+and refina does not use vLLM, so this image uses AMD's released ROCm
 PyTorch image instead.
 
 `/opt/venv` is itself a venv. `scripts/setup_envs.py` writes
-`_distill_run_base.pth` into every engine venv so that the engine venvs see
+`_refina_base.pth` into every engine venv so that the engine venvs see
 `/opt/venv` (and its ROCm Torch) and not only the system interpreter, and pins
 torch, torchvision, torchaudio and triton in `.distill/base-constraints.txt`,
 so pip never replaces the image's Torch.
@@ -59,9 +59,9 @@ Each venv is installed from its requirements file:
 The exact versions are frozen into the image at build time:
 
 ```bash
-IMG=ccr.ccs.tencentyun.com/radeon/distill-run:<tag>
-docker run --rm --entrypoint cat $IMG /opt/distill-run/.distill/freeze-<venv>.txt
-docker run --rm --entrypoint cat $IMG /opt/distill-run/.distill/base-constraints.txt
+IMG=ccr.ccs.tencentyun.com/radeon/refina:<tag>
+docker run --rm --entrypoint cat $IMG /opt/refina/.distill/freeze-<venv>.txt
+docker run --rm --entrypoint cat $IMG /opt/refina/.distill/base-constraints.txt
 docker run --rm $IMG doctor
 ```
 
@@ -71,14 +71,14 @@ docker run --rm $IMG doctor
 
 | | |
 |---|---|
-| `Entrypoint` | `["distill-run"]` |
+| `Entrypoint` | `["refina"]` |
 | `Cmd` | `["--help"]` |
-| `WorkingDir` | `/opt/distill-run` |
-| `Env` | `DISTILL_RUN_ENVS_ROOT=/opt/distill-run/.venvs`, `PATH=/opt/distill-run/.venvs/core/bin:/opt/venv/bin:/opt/rocm/bin:...`, `HF_ENDPOINT=https://hf-mirror.com`, `HF_HUB_DISABLE_XET=1`, `PYTHONUNBUFFERED=1` |
-| Labels | `io.amd.rocm.arch=gfx1100`, `distill-run.gpu-mode=single-gpu`, `distill-run.params-sha256`, `org.opencontainers.image.revision` (full commit), `org.opencontainers.image.base.name` |
+| `WorkingDir` | `/opt/refina` |
+| `Env` | `REFINA_ENVS_ROOT=/opt/refina/.venvs`, `PATH=/opt/refina/.venvs/core/bin:/opt/venv/bin:/opt/rocm/bin:...`, `HF_ENDPOINT=https://hf-mirror.com`, `HF_HUB_DISABLE_XET=1`, `PYTHONUNBUFFERED=1` |
+| Labels | `io.amd.rocm.arch=gfx1100`, `refina.gpu-mode=single-gpu`, `refina.params-sha256`, `org.opencontainers.image.revision` (full commit), `org.opencontainers.image.base.name` |
 
-The venvs record their own path in `.distill-run-runtime`; they only work at
-`/opt/distill-run/.venvs`, so do not move them.
+The venvs record their own path in `.refina-runtime`; they only work at
+`/opt/refina/.venvs`, so do not move them.
 
 The image deliberately sets no `ROCR_VISIBLE_DEVICES`, `HIP_VISIBLE_DEVICES`,
 `CUDA_VISIBLE_DEVICES`, `HOME`, `WORK_DIR` or `OUTPUT_DIR`. Which GPU a
@@ -94,7 +94,7 @@ directories belong to the caller as well.
 ```
 
 There is no `latest` tag. Deploy by digest
-(`ccr.ccs.tencentyun.com/radeon/distill-run@sha256:...`); the tag only tells
+(`ccr.ccs.tencentyun.com/radeon/refina@sha256:...`); the tag only tells
 you which commit the image came from.
 
 ## Build and push
@@ -112,9 +112,9 @@ The script refuses to build with uncommitted changes or untracked files (exit
 (exit 3). On success the last lines of stdout are:
 
 ```text
-IMAGE=ccr.ccs.tencentyun.com/radeon/distill-run:<tag>
-DIGEST=ccr.ccs.tencentyun.com/radeon/distill-run@sha256:<digest>
-PARAMS_SHA256=<sha256 of src/distill_run/params.py>
+IMAGE=ccr.ccs.tencentyun.com/radeon/refina:<tag>
+DIGEST=ccr.ccs.tencentyun.com/radeon/refina@sha256:<digest>
+PARAMS_SHA256=<sha256 of src/refina/params.py>
 ```
 
 and a line `time  tag  commit  digest  base` is appended to
@@ -134,12 +134,12 @@ Other knobs: `IMAGE_REPO`, `BASE_IMAGE`, `ENGINES`, `PIP_INDEX_URL` (default
 The `radeon` namespace on CCR allows anonymous pulls, so no `docker login` is needed:
 
 ```bash
-docker pull ccr.ccs.tencentyun.com/radeon/distill-run:<tag>
+docker pull ccr.ccs.tencentyun.com/radeon/refina:<tag>
 ```
 
 Deployments should reference the digest printed by `scripts/build-image.sh` (also in
 `build/image-digests.tsv` on the build host), e.g.
-`ccr.ccs.tencentyun.com/radeon/distill-run@sha256:<digest>`.
+`ccr.ccs.tencentyun.com/radeon/refina@sha256:<digest>`.
 
 | Tag | Digest | `PARAMS_SHA256` |
 |---|---|---|
@@ -148,7 +148,7 @@ Deployments should reference the digest printed by `scripts/build-image.sh` (als
 ## Smoke
 
 `scripts/image_smoke.py` runs inside the image and checks: the shell tools the
-platform wrapper uses (`setsid`, `find`, `head`); `distill-run doctor` for all
+platform wrapper uses (`setsid`, `find`, `head`); `refina doctor` for all
 five engines; ROCm Torch, the GPU and an importable CLI in every venv (`cv2`
 too in `yolo` and `ultralytics`); a 2-epoch `--engine ultralytics` run on
 coco8 served as NDJSON over local HTTP (expects 2 rows in `results.csv`); and
@@ -158,8 +158,8 @@ a 2-step `--engine yolo` run on the coco8 directory (expects
 ```bash
 curl -fsSLO https://github.com/ultralytics/assets/releases/download/v0.0.0/coco8.zip
 docker run --rm --device /dev/kfd --device /dev/dri -v $PWD/coco8.zip:/tmp/coco8.zip:ro \
-  --entrypoint /opt/distill-run/.venvs/core/bin/python $IMG \
-  /opt/distill-run/scripts/image_smoke.py --coco8 /tmp/coco8.zip --device 0
+  --entrypoint /opt/refina/.venvs/core/bin/python $IMG \
+  /opt/refina/scripts/image_smoke.py --coco8 /tmp/coco8.zip --device 0
 ```
 
 Each check prints `IMAGE_SMOKE <name> exit=<n> seconds=<s>`; the last line is
@@ -167,12 +167,12 @@ Each check prints `IMAGE_SMOKE <name> exit=<n> seconds=<s>`; the last line is
 `--device cpu` on a machine without an AMD GPU. The YOLO run downloads `yolo26n`
 weights from GitHub releases. `Arial.ttf`, which Ultralytics would otherwise
 download from GitHub while checking a dataset, is baked into
-`/usr/local/share/distill-run/fonts` (`DISTILL_RUN_FONTS_DIR`, sha256-pinned at
+`/usr/local/share/refina/fonts` (`REFINA_FONTS_DIR`, sha256-pinned at
 build time) and copied into Ultralytics' config dir before training.
 
 ## Licenses
 
-distill-run is Apache-2.0. The engines keep their own licenses:
+refina is Apache-2.0. The engines keep their own licenses:
 
 | package | license |
 |---|---|
@@ -186,17 +186,17 @@ Because the image ships Ultralytics, distributing the image is subject to
 AGPL-3.0 for that part. The base image carries PyTorch (BSD-3-Clause) and ROCm
 under their own licenses.
 
-## Differences from `amd-radeon/distill-run:v0.1`
+## Differences from `amd-radeon/refina:v0.1`
 
-| | `ccr.ccs.tencentyun.com/amd-radeon/distill-run:v0.1` | this image |
+| | `ccr.ccs.tencentyun.com/amd-radeon/refina:v0.1` | this image |
 |---|---|---|
 | how it was made | `docker commit` of a dev container, no recipe | `docker/Dockerfile` + `scripts/build-image.sh` |
 | base | `vllm-rocm-w7900-modelscope:1.36.3` (personal Aliyun registry), Debian bookworm | `rocm/pytorch` by digest, Ubuntu 24.04 |
 | ROCm / torch | 7.14 nightly / `2.13.0a0+rocm7.14.0a20260612` | 7.2.4 / `2.10.0+rocm7.2.4` |
-| vLLM | `0.1.dev1+g3775d5fca.rocm714` | none (distill-run does not use it) |
+| vLLM | `0.1.dev1+g3775d5fca.rocm714` | none (refina does not use it) |
 | engines | swift, trl, easydistill | swift, trl, easydistill, yolo, ultralytics |
 | Env | `ROCR_VISIBLE_DEVICES=2`, `HOME=/work/users/1001/home`, `WORK_DIR=/work/users/1001`, `OUTPUT_DIR=/output`, ROCm SDK paths | none of these |
-| package lists | none | `/opt/distill-run/.distill/freeze-<venv>.txt` |
+| package lists | none | `/opt/refina/.distill/freeze-<venv>.txt` |
 | submodule commits | not recorded | the image's `revision` label; `git submodule status` at that commit |
 
 The core and engine venvs no longer contain what the vLLM base brought in

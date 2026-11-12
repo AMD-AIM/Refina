@@ -51,7 +51,7 @@ or `messages`. Checked before the first API call.
 loading fails here in seconds rather than mid-generation.
 
 **Called as a library**, not a subprocess. Set
-`DISTILL_EASYDISTILL_MODE=subprocess` to use its CLI instead.
+`REFINA_EASYDISTILL_MODE=subprocess` to use its CLI instead.
 
 ---
 
@@ -89,11 +89,11 @@ Worth having, because ms-swift only rejects an unknown argument *after* loading
 the model.
 
 **Multi-GPU:** single-process unless `--num-processes` is greater than 1.
-distill-run passes the requested count to ms-swift, which launches torchrun. A
+refina passes the requested count to ms-swift, which launches torchrun. A
 container that can see six GPUs will not silently become a distributed job.
 
 ```bash
-distill-run --engine swift \
+refina --engine swift \
   --num-processes 4 \
   --student /models/Qwen3-0.6B \
   --dataset /output/generate-x/sft.jsonl \
@@ -186,7 +186,7 @@ weights. The default lets Trainer place both models on its current device.
 Configure FSDP or DeepSpeed explicitly when one device cannot hold both models.
 
 Plain TRL runs remain single-process unless `--num-processes` is greater than 1.
-For multi-GPU runs, distill-run relaunches itself under Accelerate using
+For multi-GPU runs, refina relaunches itself under Accelerate using
 `--distributed-strategy fsdp2`, `zero1`, `zero2`, or `zero3`.
 `--accelerate-config` can supply a custom Accelerate YAML. ZeRO-1 shards
 optimizer state, ZeRO-2 additionally shards gradients, and ZeRO-3 additionally
@@ -204,10 +204,10 @@ loading:
 FSDP2 also cannot shard a checkpoint whose input embeddings and LM head share
 the same parameter across separate FSDP groups. Preflight reads `config.json`
 and rejects `tie_word_embeddings=true` before loading weights. Use ZeRO-3 or an
-untied checkpoint; distill-run does not silently rewrite model weights.
+untied checkpoint; refina does not silently rewrite model weights.
 
 ```bash
-distill-run --engine trl \
+refina --engine trl \
   --num-processes 6 \
   --distributed-strategy zero3 \
   --teacher /models/Qwen3.8-27B \
@@ -241,13 +241,13 @@ half-written adapter.
 ## `yolo` — object detection training
 
 A built-in PyTorch implementation of YOLOv5u, YOLOv8, YOLO11 and YOLO26 (scales
-`n s m l x`) in `src/distill_run/yolo/`. It needs torch, torchvision, OpenCV and
+`n s m l x`) in `src/refina/yolo/`. It needs torch, torchvision, OpenCV and
 safetensors, and does not use the Ultralytics package. YOLO26 trains its
 end-to-end one-to-one head next to the one-to-many head, and inference takes the
 top-k without NMS.
 
 ```bash
-distill-run --engine yolo --model yolo26n.pt --data https://example.com/coco8.zip \
+refina --engine yolo --model yolo26n.pt --data https://example.com/coco8.zip \
   --epochs 100 --imgsz 640 --batch -1 --device 0 --output /output/yolo26n-exp
 ```
 
@@ -293,7 +293,7 @@ GPU memory), `--workers`, `--pretrained`, `--amp`/`--no-amp`, `--optimizer`
 `--resume` and `--device`. The engine sets `MIOPEN_FIND_MODE=FAST` unless it
 is already set (only ROCm reads it): MIOpen's default mode spends about 30 s
 tuning each new convolution shape. Every other hyper-parameter (loss gains, warmup,
-augmentation) is under `yolo.*`; see `distill-run --engine yolo
+augmentation) is under `yolo.*`; see `refina --engine yolo
 --show-default-config`.
 
 **Outputs** (`--output`): `weights/last.pt` holds the resumable state;
@@ -329,7 +329,7 @@ the package's own Platform callback. Install it with
 
 ```bash
 export REPORT_TO_TOKEN=...            # never pass the token as a flag
-distill-run --engine ultralytics --model yolo26n.pt \
+refina --engine ultralytics --model yolo26n.pt \
   --data "$SIGNED_NDJSON_URL" --dataset-sha256 sha256:3f5c... \
   --train-args 'epochs=100 imgsz=640 batch=-1 patience=20 mixup=0.1' \
   --report-to-url https://platform.example.com \
@@ -458,14 +458,14 @@ and the run exits with code 5 and `IntegrityCheckFailed`.
 ## Progress events
 
 Every engine writes machine-readable lines to stdout through the
-`distill_run.events` logger, which stays at INFO even with `LOG_LEVEL=WARNING`:
+`refina.events` logger, which stays at INFO even with `LOG_LEVEL=WARNING`:
 
 ```text
-16:19:50 INFO distill_run.events: DISTILL_EVENT {"event": "stage", "stage": "downloading", "time": "2026-10-30T16:19:50.890Z"}
+16:19:50 INFO refina.events: REFINA_EVENT {"event": "stage", "stage": "downloading", "time": "2026-10-30T16:19:50.890Z"}
 ```
 
-Take everything after `DISTILL_EVENT ` as one JSON object.
-`distill_run.events.parse(line)` does this.
+Take everything after `REFINA_EVENT ` as one JSON object.
+`refina.events.parse(line)` does this.
 
 | `event` | fields | when |
 |---|---|---|

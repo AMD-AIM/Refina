@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-IMAGE_REPO = "ccr.ccs.tencentyun.com/radeon/distill-run"
+IMAGE_REPO = "ccr.ccs.tencentyun.com/radeon/refina"
 BASE_DIGEST = "sha256:4449f856653602317e4101a76fce599c7fcd58ccec2e539951fce5f73083179e"
 BASE = f"docker.io/rocm/pytorch@{BASE_DIGEST}"
 DIGEST = f"{IMAGE_REPO}@sha256:{'a' * 64}"
@@ -43,7 +43,7 @@ def repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     files = {
         "docker/Dockerfile": "FROM scratch\n",
-        "src/distill_run/params.py": "PARAMS = ()\n",
+        "src/refina/params.py": "PARAMS = ()\n",
         "third_party/trl/pyproject.toml": "",
         "third_party/easydistill/pyproject.toml": "",
         ".gitignore": "build/\n",
@@ -99,7 +99,7 @@ def _calls(docker: dict[str, Path]) -> list[str]:
 
 
 def _params_sha(repo: Path) -> str:
-    return hashlib.sha256((repo / "src/distill_run/params.py").read_bytes()).hexdigest()
+    return hashlib.sha256((repo / "src/refina/params.py").read_bytes()).hexdigest()
 
 
 def test_refuses_a_worktree_with_untracked_files(repo, docker):

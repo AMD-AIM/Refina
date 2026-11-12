@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from distill_run.cli import build_context, main
-from distill_run.errors import ExitCode, UsageError
+from refina.cli import build_context, main
+from refina.errors import ExitCode, UsageError
 
 
 def test_successful_run_exits_zero_and_writes_its_artifact(run_dirs):
@@ -96,7 +96,7 @@ def test_missing_dataset_fails_during_resolve(run_dirs, tmp_path: Path):
 
 def test_everything_can_come_from_the_environment(run_dirs, monkeypatch: pytest.MonkeyPatch):
     work, output = run_dirs
-    monkeypatch.setenv("DISTILL_ENGINE", "noop")
+    monkeypatch.setenv("REFINA_ENGINE", "noop")
     monkeypatch.setenv("OUTPUT_PATH", str(output))
     monkeypatch.setenv("WORK_DIR", str(work))
     assert main([]) == ExitCode.OK
@@ -104,8 +104,8 @@ def test_everything_can_come_from_the_environment(run_dirs, monkeypatch: pytest.
 
 def test_cancellation_before_the_engine_exits_130(run_dirs, monkeypatch: pytest.MonkeyPatch):
     work, output = run_dirs
-    from distill_run import cli
-    from distill_run.signals import Cancellation
+    from refina import cli
+    from refina.signals import Cancellation
 
     already_cancelled = Cancellation()
     already_cancelled.request()
@@ -166,7 +166,7 @@ def test_engine_catalog_lists_public_frameworks(capsys):
 
 
 def test_unknown_engine_points_to_the_engine_catalog():
-    with pytest.raises(UsageError, match=r"distill-run --engines"):
+    with pytest.raises(UsageError, match=r"refina --engines"):
         build_context({"engine": "unsupported"})
 
 

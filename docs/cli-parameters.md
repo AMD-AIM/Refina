@@ -1,6 +1,6 @@
 # CLI 参数分层与兼容矩阵
 
-`distill-run` 目前提供 80 个一级参数（另有 `--models`、`--datasets`、`--engines`
+`refina` 目前提供 80 个一级参数（另有 `--models`、`--datasets`、`--engines`
 三个目录查询参数）。参数不是所有引擎通用：解析后会根据
 `--engine` 校验，不属于当前引擎的参数会直接报错，不会被静默忽略。
 
@@ -13,9 +13,9 @@
 5. TRL 白盒蒸馏专属参数。
 6. 模型、数据与分布式运行参数。
 
-当前命令形式是 `distill-run --engine trl ...`。如果未来改为
-`distill-run trl ...` 子命令，参数归属保持不变，只改变帮助信息和解析形式：
-`distill-run trl --help` 只显示全局、通用训练及 TRL 专属参数。
+当前命令形式是 `refina --engine trl ...`。如果未来改为
+`refina trl ...` 子命令，参数归属保持不变，只改变帮助信息和解析形式：
+`refina trl --help` 只显示全局、通用训练及 TRL 专属参数。
 
 图例：✓ 表示引擎接受该参数，— 表示不接受。`E` = EasyDistill，
 `S` = Swift，`T` = TRL，`ES` = EasyDistill-Swift。
@@ -31,7 +31,7 @@
 | `--show-default-config` | bool | false | ✓ | ✓ | ✓ | ✓ | 打印当前引擎内置配置后退出 |
 | `--set` | `key=value` | 无 | ✓ | ✓ | ✓ | ✓ | 覆盖未提升为一级参数的框架字段，可重复 |
 | `--run-id` | string | 时间戳 ID | ✓ | ✓ | ✓ | ✓ | 本次运行标识 |
-| `--work-dir` | path | `~/.cache/distill-run` | ✓ | ✓ | ✓ | ✓ | 缓存及中间文件目录 |
+| `--work-dir` | path | `~/.cache/refina` | ✓ | ✓ | ✓ | ✓ | 缓存及中间文件目录 |
 | `--model-cache-dir` | path | `<work-dir>/models` | — | ✓ | ✓ | ✓ | Hub 模型的容器本地缓存 |
 | `--model-revision` | string | Hub 默认版本 | — | ✓ | ✓ | ✓ | Teacher/Student 模型 revision 或 commit |
 | `--dataset-cache-dir` | path | `<work-dir>/cache` | ✓ | ✓ | ✓ | ✓ | 网络数据集缓存目录 |
@@ -140,7 +140,7 @@ TRL 同时接受教师生成参数表中的 `--temperature`。
 | `--model-sha256` | string | 无 | `STUDENT_MODEL_SHA256` | 权重文件的 `sha256:<hex>`；不匹配时退出码 5 |
 
 ```bash
-distill-run --engine yolo --model yolo26n.pt --data /data/coco8 \
+refina --engine yolo --model yolo26n.pt --data /data/coco8 \
   --epochs 100 --imgsz 640 --batch -1 --device 0 --output /output/yolo26n
 ```
 
@@ -190,7 +190,7 @@ distill-run --engine yolo --model yolo26n.pt --data /data/coco8 \
 ### EasyDistill
 
 ```bash
-distill-run --engine easydistill \
+refina --engine easydistill \
   --teacher-base-url http://teacher:8000/v1 \
   --teacher-model-id Qwen3.5-27B \
   --input hf://organization/seed-dataset \
@@ -201,7 +201,7 @@ distill-run --engine easydistill \
 ### Swift
 
 ```bash
-distill-run --engine swift \
+refina --engine swift \
   --student /models/Qwen3-0.6B \
   --dataset /data/sft.jsonl \
   --output /output/swift \
@@ -214,7 +214,7 @@ distill-run --engine swift \
 ### TRL
 
 ```bash
-distill-run --engine trl \
+refina --engine trl \
   --teacher /models/Qwen3.8-27B \
   --student /models/Qwen3.5-0.8B \
   --dataset /data/prompts.jsonl \
@@ -229,7 +229,7 @@ distill-run --engine trl \
 ### EasyDistill-Swift
 
 ```bash
-distill-run --engine easydistill-swift \
+refina --engine easydistill-swift \
   --teacher-base-url http://teacher:8000/v1 \
   --teacher-model-id Qwen3.5-27B \
   --input /data/seed.jsonl \
@@ -243,7 +243,7 @@ distill-run --engine easydistill-swift \
 `--set dotted.path=value` 只用于尚未提升为一级参数的框架选项，例如：
 
 ```bash
-distill-run --engine trl ... \
+refina --engine trl ... \
   --set trl.weight_decay=0.01 \
   --set trl.lr_scheduler_type=cosine
 ```

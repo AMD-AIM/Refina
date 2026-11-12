@@ -21,7 +21,7 @@ _ENGINE_ENV = {
     "yolo": "yolo",
     "ultralytics": "ultralytics",
 }
-_WORKER_MARKER = "DISTILL_RUN_ENGINE_WORKER"
+_WORKER_MARKER = "REFINA_ENGINE_WORKER"
 
 
 def project_root() -> Path:
@@ -29,7 +29,7 @@ def project_root() -> Path:
 
 
 def environments_root() -> Path:
-    configured = os.environ.get("DISTILL_RUN_ENVS_ROOT")
+    configured = os.environ.get("REFINA_ENVS_ROOT")
     return Path(configured) if configured else project_root() / ".venvs"
 
 
@@ -37,14 +37,14 @@ def engine_python(engine: str) -> Path | None:
     env_name = _ENGINE_ENV.get(engine)
     if env_name is None:
         return None
-    override = os.environ.get(f"DISTILL_RUN_{env_name.upper()}_PYTHON")
+    override = os.environ.get(f"REFINA_{env_name.upper()}_PYTHON")
     candidate = Path(override) if override else environments_root() / env_name / "bin" / "python"
     if not candidate.is_file():
         return None
     if override:
         return candidate
     environment = candidate.parent.parent
-    marker = environment / ".distill-run-runtime"
+    marker = environment / ".refina-runtime"
     try:
         recorded = Path(marker.read_text(encoding="utf-8").strip())
         if recorded != environment.resolve():
@@ -75,9 +75,9 @@ def maybe_run_in_engine_environment(engine: str, argv: Sequence[str]) -> int | N
     env[_WORKER_MARKER] = "1"
     swift = environments_root() / "swift" / "bin" / "swift"
     if swift.is_file():
-        env.setdefault("DISTILL_RUN_SWIFT_EXECUTABLE", str(swift))
+        env.setdefault("REFINA_SWIFT_EXECUTABLE", str(swift))
     logger.info("using isolated %s environment: %s", engine, python)
-    command = [str(python), "-m", "distill_run", *argv]
+    command = [str(python), "-m", "refina", *argv]
     if os.name != "posix":
         return subprocess.call(command, env=env)  # noqa: S603
     # Replace this process rather than wait on a child: SIGTERM from the pod (or the

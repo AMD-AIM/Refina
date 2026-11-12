@@ -14,11 +14,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from distill_run import events
-from distill_run.cli import build_context, main
-from distill_run.dataset import DatasetSpec, resolve
-from distill_run.engines.ultralytics import ReportTarget, check_train_args
-from distill_run.errors import (
+from refina import events
+from refina.cli import build_context, main
+from refina.dataset import DatasetSpec, resolve
+from refina.engines.ultralytics import ReportTarget, check_train_args
+from refina.errors import (
     ConfigError,
     DataError,
     DatasetFetchError,
@@ -26,14 +26,14 @@ from distill_run.errors import (
     IntegrityError,
     UsageError,
 )
-from distill_run.integrity import parse_digest, verify
+from refina.integrity import parse_digest, verify
 
 
 @pytest.fixture(autouse=True)
 def _fresh_logger():
     import logging
 
-    ours = logging.getLogger("distill_run")
+    ours = logging.getLogger("refina")
     saved = list(ours.handlers)
     ours.handlers = []
     yield
@@ -158,7 +158,7 @@ def export_server():
 
 
 def _ultralytics_specs(run_dirs, monkeypatch, base: str, **extra):
-    from distill_run.engines import ultralytics as ul
+    from refina.engines import ultralytics as ul
 
     monkeypatch.setattr(ul, "_setup_ultralytics", lambda ctx, report: None)
     monkeypatch.setattr(ul, "_check_types", lambda args: None)
@@ -218,7 +218,7 @@ def test_cli_exits_5_and_reports_the_stage(run_dirs, tmp_path: Path, capsys):
 
 
 def test_events_survive_a_quiet_log_level(capsys, monkeypatch):
-    from distill_run.cli import configure_logging
+    from refina.cli import configure_logging
 
     monkeypatch.setenv("LOG_LEVEL", "WARNING")
     configure_logging()
@@ -286,14 +286,14 @@ def test_report_target_needs_a_token_and_valid_names(monkeypatch):
 
 
 def _hooks(tmp_path: Path, report=None):
-    from distill_run.engines.ultralytics import _Hooks
+    from refina.engines.ultralytics import _Hooks
 
     ctx = SimpleNamespace(cancellation=SimpleNamespace(requested=False))
     return _Hooks(ctx, report, tmp_path)
 
 
 def test_progress_skips_the_final_validation_callback(tmp_path: Path, capsys):
-    from distill_run.cli import configure_logging
+    from refina.cli import configure_logging
 
     configure_logging()
     hooks = _hooks(tmp_path)
@@ -393,7 +393,7 @@ def test_webhook_without_the_platform_callback_still_trains(tmp_path: Path, monk
 
 
 def test_rest_reports_every_n_epochs(tmp_path: Path):
-    from distill_run.platform_rest import RestConfig
+    from refina.platform_rest import RestConfig
 
     sent = []
     hooks = _hooks(tmp_path)
@@ -418,7 +418,7 @@ def test_rest_reports_every_n_epochs(tmp_path: Path):
 
 
 def _rest_hooks(tmp_path: Path, every: int):
-    from distill_run.platform_rest import RestConfig
+    from refina.platform_rest import RestConfig
 
     sent: list[tuple[str, dict]] = []
     hooks = _hooks(tmp_path)
@@ -490,7 +490,7 @@ def test_report_cadence_flags_reach_report_to(run_dirs):
 
 
 def test_ultralytics_engine_accepts_its_flags():
-    from distill_run import params as P
+    from refina import params as P
 
     accepted = {p.dest for p in P.params_for("ultralytics")}
     assert {"train_args", "epochs", "student", "dataset", "model_sha256", "report_to_url",
@@ -502,8 +502,8 @@ def test_ultralytics_engine_accepts_its_flags():
 
 def _cancel_hooks(tmp_path: Path, monkeypatch, protocol="webhook"):
     """Webhook hooks with a real Cancellation; REST calls are recorded, not sent."""
-    from distill_run.engines import ultralytics as ul
-    from distill_run.signals import Cancellation
+    from refina.engines import ultralytics as ul
+    from refina.signals import Cancellation
 
     monkeypatch.setenv("REPORT_TO_TOKEN", "tok-r156i")
     report = ReportTarget.from_config({"api_base_url": "http://p", "model": "acme-vision/p/m",
@@ -555,12 +555,12 @@ def test_webhook_cancel_patch_falls_back_to_the_report_model(tmp_path: Path, mon
 def test_cancel_patch_failure_does_not_stop_the_upload(tmp_path: Path, monkeypatch, caplog):
     import logging
 
-    from distill_run.engines import ultralytics as ul
-    from distill_run.platform_rest import PlatformHTTPError
+    from refina.engines import ultralytics as ul
+    from refina.platform_rest import PlatformHTTPError
 
     # configure_logging() in an earlier test may have stopped propagation to caplog's handler.
-    monkeypatch.setattr(logging.getLogger("distill_run"), "propagate", True)
-    caplog.set_level(logging.WARNING, logger="distill_run")
+    monkeypatch.setattr(logging.getLogger("refina"), "propagate", True)
+    caplog.set_level(logging.WARNING, logger="refina")
     hooks, _ = _cancel_hooks(tmp_path, monkeypatch)
 
     def refuse(client, method, path, body=None, params=None):
@@ -574,7 +574,7 @@ def test_cancel_patch_failure_does_not_stop_the_upload(tmp_path: Path, monkeypat
 
 
 def test_platform_cancel_is_exit_130_with_its_own_code(tmp_path: Path, monkeypatch):
-    from distill_run.errors import CancelledError, PlatformCancelledError
+    from refina.errors import CancelledError, PlatformCancelledError
 
     hooks, sent = _cancel_hooks(tmp_path, monkeypatch)
     summary = {"epochs_completed": 2}
@@ -591,8 +591,8 @@ def test_platform_cancel_is_exit_130_with_its_own_code(tmp_path: Path, monkeypat
 
 
 def test_platform_cancel_exit_event(run_dirs, monkeypatch, capsys):
-    from distill_run.engines import ultralytics as ul
-    from distill_run.errors import PlatformCancelledError
+    from refina.engines import ultralytics as ul
+    from refina.errors import PlatformCancelledError
 
     def cancelled(self, ctx):
         raise PlatformCancelledError("cancelled from the platform at epoch 2")
@@ -612,7 +612,7 @@ def test_platform_cancel_exit_event(run_dirs, monkeypatch, capsys):
 
 
 def test_bundled_fonts_land_in_the_ultralytics_config_dir(tmp_path: Path):
-    from distill_run.engines.ultralytics import _install_fonts
+    from refina.engines.ultralytics import _install_fonts
 
     fonts, config = tmp_path / "fonts", tmp_path / "config"
     fonts.mkdir()

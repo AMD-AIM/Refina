@@ -61,7 +61,7 @@ def _engine_check(name: str, module: str, package: str, executable: str | None) 
 def collect(selected: list[str] | None = None) -> list[Check]:
     root = project_root()
     checks = [
-        Check("core", True, f"distill-run {_package_version('distill-run')} ({sys.executable})"),
+        Check("core", True, f"refina {_package_version('refina')} ({sys.executable})"),
         Check("project", (root / "pyproject.toml").is_file(), str(root)),
     ]
     for name in selected or list(_ENGINES):
@@ -75,7 +75,7 @@ def collect(selected: list[str] | None = None) -> list[Check]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="distill-run doctor")
+    parser = argparse.ArgumentParser(prog="refina doctor")
     parser.add_argument("--engine", action="append", choices=tuple(_ENGINES))
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)

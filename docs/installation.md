@@ -1,13 +1,13 @@
 # Independent installation
 
-`distill-run` owns its source dependencies and does not import repositories next
+`refina` owns its source dependencies and does not import repositories next
 to its checkout.
 
 ## Development checkout
 
 ```bash
 git clone --recursive <repository>
-cd distill-run
+cd refina
 make dev PROFILE=rocm714
 ```
 
@@ -69,12 +69,12 @@ The parent repository records the selected commit as its gitlink. Run
 The public CLI detects `.venvs/<engine>/bin/python` and relaunches the complete
 command once in that environment. This preserves the existing CLI and
 Accelerate/torchrun behavior while isolating conflicting TRL and ms-swift
-dependency graphs. Set `DISTILL_RUN_ENVS_ROOT` when the environments are mounted
+dependency graphs. Set `REFINA_ENVS_ROOT` when the environments are mounted
 at a different path.
 
 Run diagnostics with:
 
 ```bash
-distill-run doctor
-distill-run doctor --engine trl --json
+refina doctor
+refina doctor --engine trl --json
 ```

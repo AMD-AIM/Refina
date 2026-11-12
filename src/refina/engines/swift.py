@@ -118,7 +118,7 @@ class SwiftEngine(Engine):
                 logger.info("resuming from %s", latest)
                 args["resume_from_checkpoint"] = str(latest)
 
-        configured = os.environ.get("DISTILL_RUN_SWIFT_EXECUTABLE")
+        configured = os.environ.get("REFINA_SWIFT_EXECUTABLE")
         in_venv = Path(sys.executable).parent / "swift"
         executable = configured or (str(in_venv) if in_venv.is_file() else "swift")
         argv = [executable, "sft"]

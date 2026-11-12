@@ -150,7 +150,7 @@ def _rows(files: list[Path], format_name: str, split: str) -> Iterator[dict[str,
         from datasets import load_dataset
     except ImportError as exc:
         raise DataError(
-            f"{format_name} datasets require the 'datasets' package; install distill-run[dataset]"
+            f"{format_name} datasets require the 'datasets' package; install refina[dataset]"
         ) from exc
 
     try:

@@ -9,15 +9,15 @@ from pathlib import Path
 
 import pytest
 
-from distill_run.doctor import main as doctor_main
-from distill_run.runtime_env import maybe_run_in_engine_environment
+from refina.doctor import main as doctor_main
+from refina.runtime_env import maybe_run_in_engine_environment
 
 
 def test_engine_command_replaces_the_process_with_the_engine_python(tmp_path: Path, monkeypatch):
     python = tmp_path / "python"
     python.write_text("", encoding="utf-8")
-    monkeypatch.setenv("DISTILL_RUN_SWIFT_PYTHON", str(python))
-    monkeypatch.setattr("distill_run.runtime_env.os.name", "posix")
+    monkeypatch.setenv("REFINA_SWIFT_PYTHON", str(python))
+    monkeypatch.setattr("refina.runtime_env.os.name", "posix")
     captured = {}
 
     class Replaced(Exception):
@@ -30,13 +30,13 @@ def test_engine_command_replaces_the_process_with_the_engine_python(tmp_path: Pa
     def no_child(*_args, **_kwargs):
         raise AssertionError("a child process would not receive SIGTERM from the pod")
 
-    monkeypatch.setattr("distill_run.runtime_env.os.execve", fake_execve, raising=False)
-    monkeypatch.setattr("distill_run.runtime_env.subprocess.call", no_child)
+    monkeypatch.setattr("refina.runtime_env.os.execve", fake_execve, raising=False)
+    monkeypatch.setattr("refina.runtime_env.subprocess.call", no_child)
     with pytest.raises(Replaced):
         maybe_run_in_engine_environment("swift", ["--engine", "swift"])
     assert captured["path"] == str(python)
-    assert captured["command"] == [str(python), "-m", "distill_run", "--engine", "swift"]
-    assert captured["env"]["DISTILL_RUN_ENGINE_WORKER"] == "1"
+    assert captured["command"] == [str(python), "-m", "refina", "--engine", "swift"]
+    assert captured["env"]["REFINA_ENGINE_WORKER"] == "1"
 
 
 @pytest.mark.skipif(os.name != "posix", reason="exec and POSIX signals")
@@ -45,7 +45,7 @@ def test_sigterm_reaches_the_engine_worker(tmp_path: Path):
     envs = tmp_path / "envs"
     venv = envs / "ultralytics"
     (venv / "bin").mkdir(parents=True)
-    (venv / ".distill-run-runtime").write_text(str(venv.resolve()), encoding="utf-8")
+    (venv / ".refina-runtime").write_text(str(venv.resolve()), encoding="utf-8")
     worker = venv / "bin" / "python"
     worker.write_text(
         "#!/bin/sh\n"
@@ -56,11 +56,11 @@ def test_sigterm_reaches_the_engine_worker(tmp_path: Path):
     )
     worker.chmod(0o755)
     code = (
-        "import sys; from distill_run.runtime_env import maybe_run_in_engine_environment as m; "
+        "import sys; from refina.runtime_env import maybe_run_in_engine_environment as m; "
         "sys.exit(m('ultralytics', ['--engine', 'ultralytics']) or 0)"
     )
-    env = {k: v for k, v in os.environ.items() if k != "DISTILL_RUN_ENGINE_WORKER"}
-    env["DISTILL_RUN_ENVS_ROOT"] = str(envs)
+    env = {k: v for k, v in os.environ.items() if k != "REFINA_ENGINE_WORKER"}
+    env["REFINA_ENVS_ROOT"] = str(envs)
     proc = subprocess.Popen(
         [sys.executable, "-c", code], env=env, stdout=subprocess.PIPE, text=True
     )
@@ -71,12 +71,12 @@ def test_sigterm_reaches_the_engine_worker(tmp_path: Path):
 
 
 def test_engine_worker_does_not_relaunch(monkeypatch):
-    monkeypatch.setenv("DISTILL_RUN_ENGINE_WORKER", "1")
+    monkeypatch.setenv("REFINA_ENGINE_WORKER", "1")
     assert maybe_run_in_engine_environment("trl", ["--engine", "trl"]) is None
 
 
 def test_doctor_reports_a_missing_engine_environment(tmp_path: Path, monkeypatch, capsys):
-    monkeypatch.setenv("DISTILL_RUN_ENVS_ROOT", str(tmp_path))
+    monkeypatch.setenv("REFINA_ENVS_ROOT", str(tmp_path))
     assert doctor_main(["--engine", "swift", "--json"]) == 1
     payload = json.loads(capsys.readouterr().out)
     swift = next(check for check in payload if check["name"] == "swift")

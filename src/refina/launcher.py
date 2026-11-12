@@ -115,7 +115,7 @@ def launch_trl_if_needed(ctx: RunContext, child_argv: Sequence[str]) -> int | No
         "--main_process_port",
         str(ctx.param("main_process_port", 29500)),
         "--module",
-        "distill_run",
+        "refina",
         *forwarded,
     ]
     logger.info("launching TRL with %d process(es) via %s", processes, config.name)

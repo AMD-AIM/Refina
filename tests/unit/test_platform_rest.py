@@ -14,10 +14,10 @@ from pathlib import Path
 
 import pytest
 
-from distill_run import defaults, redact
-from distill_run.engines.ultralytics import ReportTarget
-from distill_run.errors import ConfigError
-from distill_run.platform_rest import (
+from refina import defaults, redact
+from refina.engines.ultralytics import ReportTarget
+from refina.errors import ConfigError
+from refina.platform_rest import (
     PlatformHTTPError,
     RestClient,
     RestConfig,

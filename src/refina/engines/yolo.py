@@ -1,4 +1,4 @@
-"""YOLO detection training on the built-in implementation in :mod:`distill_run.yolo`.
+"""YOLO detection training on the built-in implementation in :mod:`refina.yolo`.
 
 ``--model`` accepts:
 

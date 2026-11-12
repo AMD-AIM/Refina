@@ -51,9 +51,9 @@ def test_dockerfile_has_no_secret_inputs(dockerfile):
 
 def test_dockerfile_runtime_contract(dockerfile):
     for text in (
-        "WORKDIR /opt/distill-run",
-        "DISTILL_RUN_ENVS_ROOT=/opt/distill-run/.venvs",
-        'ENTRYPOINT ["distill-run"]',
+        "WORKDIR /opt/refina",
+        "REFINA_ENVS_ROOT=/opt/refina/.venvs",
+        'ENTRYPOINT ["refina"]',
         'CMD ["--help"]',
     ):
         assert text in dockerfile
@@ -71,9 +71,9 @@ def test_per_commit_args_come_after_every_run(dockerfile):
 def test_dockerfile_bundles_the_ultralytics_font(dockerfile):
     lines = dockerfile.splitlines()
     assert re.search(r"^ARG ARIAL_SHA256=[0-9a-f]{64}$", dockerfile, re.M)
-    assert "DISTILL_RUN_FONTS_DIR=/usr/local/share/distill-run/fonts" in dockerfile
+    assert "REFINA_FONTS_DIR=/usr/local/share/refina/fonts" in dockerfile
     fetch = next(i for i, line in enumerate(lines) if "ARIAL_SHA256}" in line)
-    assert fetch < lines.index("COPY . /opt/distill-run")
+    assert fetch < lines.index("COPY . /opt/refina")
 
 
 def test_dockerignore_keeps_submodule_sources():
