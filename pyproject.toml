@@ -27,6 +27,13 @@ dev = ["pytest>=8.0", "ruff>=0.5"]
 [project.scripts]
 refina = "refina.cli:main"
 
+[project.entry-points."refina.engines"]
+easydistill = "refina.engines.easydistill:SPEC"
+swift = "refina.engines.swift:SPEC"
+trl = "refina.engines.trl:SPEC"
+easydistill-swift = "refina.engines.easydistill_swift:SPEC"
+noop = "refina.engines.noop:SPEC"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

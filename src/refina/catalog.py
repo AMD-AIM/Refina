@@ -11,38 +11,14 @@ import yaml
 
 from .runtime_env import project_root
 
-ENGINE_CATALOG: dict[str, dict[str, str]] = {
-    "easydistill": {
-        "framework": "EasyDistill",
-        "mode": "black-box generation",
-        "input": "seed prompts + OpenAI-compatible teacher API",
-    },
-    "swift": {
-        "framework": "ms-swift",
-        "mode": "student SFT",
-        "input": "SFT dataset + local or Hub student weights",
-    },
-    "trl": {
-        "framework": "TRL DistillationTrainer",
-        "mode": "white-box logits distillation",
-        "input": "prompt dataset + local or Hub teacher and student weights",
-    },
-    "easydistill-swift": {
-        "framework": "EasyDistill + ms-swift",
-        "mode": "black-box generation followed by student SFT",
-        "input": "seed prompts + teacher API + local or Hub student weights",
-    },
-    "noop": {
-        "framework": "built-in",
-        "mode": "CLI test engine",
-        "input": "none",
-    },
-}
-
 
 def supported_engine_names(*, include_internal: bool = True) -> tuple[str, ...]:
-    names = tuple(ENGINE_CATALOG)
-    return names if include_internal else tuple(name for name in names if name != "noop")
+    from .engines import registry  # lazy: refina.engines imports this module
+
+    names = registry.available()
+    if include_internal:
+        return names
+    return tuple(name for name in names if not registry.spec(name).internal)
 
 
 def _model_roots() -> list[Path]:
@@ -148,7 +124,20 @@ def dataset_catalog() -> dict[str, Any]:
 
 
 def engine_catalog() -> dict[str, Any]:
-    return {"engines": ENGINE_CATALOG}
+    from .engines import registry  # lazy: refina.engines imports this module
+
+    engines: dict[str, dict[str, str]] = {}
+    for name in registry.available():
+        spec = registry.spec(name)
+        engines[name] = {
+            "framework": spec.framework,
+            "mode": spec.mode,
+            "input": spec.input,
+            "plugin": spec.plugin,
+        }
+    for name, error in sorted(registry.broken().items()):
+        engines[name] = {"plugin": "error", "error": error}
+    return {"engines": engines}
 
 
 def model_error_hint() -> str:

@@ -1,36 +1,77 @@
-"""Lazy engine registry.
+"""Engine registry backed by the ``refina.engines`` entry point group.
 
-Engine modules import heavy frameworks inside their functions, and are themselves
-imported only when a run needs them, so a broken trl install cannot stop a swift
-run from starting.
+Each entry point resolves to an :class:`EngineSpec`. Engine modules import heavy
+frameworks inside their functions, so reading specs stays CPU-only and a broken
+trl install cannot stop a swift run from starting. A plugin whose spec fails to
+import is reported on its own and does not hide the others.
 """
 
 from __future__ import annotations
 
-from typing import Final
+import functools
+import importlib
+import importlib.metadata
+from typing import TYPE_CHECKING
 
 from ..errors import UsageError
 from ..params import ENGINES
-from .base import Engine
+from .spec import ENTRY_POINT_GROUP, EngineSpec
 
-_MODULES: Final[dict[str, tuple[str, str]]] = {
-    "easydistill": (".easydistill", "EasyDistillEngine"),
-    "swift": (".swift", "SwiftEngine"),
-    "trl": (".trl", "TrlEngine"),
-    "easydistill-swift": (".easydistill_swift", "EasyDistillSwiftEngine"),
-    "noop": (".noop", "NoopEngine"),
-}
+if TYPE_CHECKING:
+    from .base import Engine
+
+_broken: dict[str, str] = {}
+
+
+@functools.cache
+def specs() -> dict[str, EngineSpec]:
+    entry_points = list(importlib.metadata.entry_points(group=ENTRY_POINT_GROUP))
+    if not entry_points:
+        raise UsageError(
+            f"no engines registered under the '{ENTRY_POINT_GROUP}' entry point group; "
+            "install refina with `pip install -e .` so its entry points exist"
+        )
+    found: dict[str, EngineSpec] = {}
+    _broken.clear()
+    for entry_point in entry_points:
+        try:
+            loaded = entry_point.load()
+        except Exception as exc:  # one bad plugin must not hide the rest
+            _broken[entry_point.name] = f"{type(exc).__name__}: {exc}"
+            continue
+        if not isinstance(loaded, EngineSpec):
+            _broken[entry_point.name] = f"entry point does not resolve to an EngineSpec: {loaded!r}"
+            continue
+        if loaded.name != entry_point.name:
+            raise UsageError(
+                f"engine entry point '{entry_point.name}' publishes a spec named '{loaded.name}'"
+            )
+        found[loaded.name] = loaded
+    return found
+
+
+def broken() -> dict[str, str]:
+    """Plugins whose spec could not be loaded, with the reason."""
+    specs()
+    return dict(_broken)
 
 
 def available() -> tuple[str, ...]:
-    return tuple(_MODULES)
+    registered = specs()
+    builtin = tuple(name for name in ENGINES if name in registered)
+    return builtin + tuple(sorted(set(registered) - set(builtin)))
+
+
+def spec(name: str) -> EngineSpec:
+    registered = specs()
+    if name in registered:
+        return registered[name]
+    if name in _broken:
+        raise UsageError(f"engine '{name}' failed to load: {_broken[name]}")
+    raise UsageError(f"unknown engine '{name}'; expected one of {', '.join(available())}")
 
 
 def load(name: str) -> Engine:
-    if name not in _MODULES:
-        raise UsageError(f"unknown engine '{name}'; expected one of {', '.join(ENGINES)}")
-    import importlib
-
-    module_name, class_name = _MODULES[name]
-    module = importlib.import_module(module_name, package=__package__)
-    return getattr(module, class_name)()
+    module_name, _, attribute = spec(name).factory.partition(":")
+    factory = getattr(importlib.import_module(module_name), attribute)
+    return factory()

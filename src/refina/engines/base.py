@@ -2,8 +2,8 @@
 
 An engine is a thin adapter: it gets a validated context with local dataset paths
 and translates it into one framework call. Argument parsing, URI resolution and
-caching all happen outside, so adding an engine touches one module plus the
-registry.
+caching all happen outside, so adding an engine touches one module that exports
+a ``SPEC`` plus one ``refina.engines`` entry point.
 """
 
 from __future__ import annotations
@@ -15,13 +15,7 @@ from pathlib import Path
 from .. import params as P
 from ..context import RunContext
 from ..dataset import DatasetSpec
-
-_DATASET_PURPOSE = {
-    "easydistill": "seed",
-    "easydistill-swift": "seed",
-    "swift": "sft",
-    "trl": "prompt",
-}
+from . import registry
 
 
 @dataclass
@@ -68,9 +62,14 @@ def make_spec(ctx: RunContext, uri: str) -> DatasetSpec:
         split=ctx.param("dataset_split", "train"),
         max_samples=ctx.param("dataset_max_samples"),
         shuffle_seed=ctx.param("dataset_shuffle_seed", 42),
-        purpose=_DATASET_PURPOSE.get(ctx.engine),
+        purpose=_dataset_purpose(ctx.engine),
         sha256=ctx.param("dataset_sha256"),
     )
+
+
+def _dataset_purpose(engine: str) -> str | None:
+    spec = registry.specs().get(engine)
+    return spec.dataset_purpose if spec else None
 
 
 def config_dataset(ctx: RunContext) -> str | None:

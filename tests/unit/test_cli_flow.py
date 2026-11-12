@@ -165,6 +165,14 @@ def test_engine_catalog_lists_public_frameworks(capsys):
     assert engines["trl"]["framework"] == "TRL DistillationTrainer"
 
 
+def test_engines_listing_marks_optional_plugins(capsys):
+    assert main(["--engines"]) == ExitCode.OK
+    engines = yaml.safe_load(capsys.readouterr().out)["engines"]
+    assert engines["swift"]["plugin"] == "optional"
+    assert engines["trl"]["plugin"] == "core"
+    assert engines["noop"]["plugin"] == "internal"
+
+
 def test_unknown_engine_points_to_the_engine_catalog():
     with pytest.raises(UsageError, match=r"refina --engines"):
         build_context({"engine": "unsupported"})

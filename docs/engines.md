@@ -279,3 +279,41 @@ steps: 3
 step_delay_sec: 0
 fail_at_step: 2    # optional, for testing the failure path
 ```
+
+---
+
+## Adding an engine
+
+Engines are plugins found through the `refina.engines` entry point group. The
+built-in ones are registered in Refina's own `pyproject.toml`; a third-party
+package registers its engine the same way:
+
+```toml
+[project.entry-points."refina.engines"]
+my-engine = "my_package.engine:SPEC"
+```
+
+The entry point resolves to an `EngineSpec` (`refina.engines.spec`), the only
+place an engine's metadata lives:
+
+| Field | Meaning |
+|-------|---------|
+| `name` | CLI name; must equal the entry point name |
+| `factory` | `"module:Class"` of the `Engine` subclass, imported only when the engine runs |
+| `framework`, `mode`, `input` | What `refina --engines` prints |
+| `defaults` | Config printed by `--show-default-config` and merged under user config |
+| `env` | Name of the isolated venv under `REFINA_ENVS_ROOT` the run re-executes in |
+| `doctor` | `DoctorCheck(module, package, executable)` for `refina doctor` |
+| `dataset_purpose` | How resolved datasets are validated: `seed`, `sft` or `prompt` |
+| `optional` | Listed as `optional` instead of `core` |
+| `internal` | Test-only engine such as `noop` |
+
+Define `SPEC` at module top level and import the framework only inside
+functions, so listing engines never imports torch. A spec that fails to import
+shows up in `refina --engines` with `plugin: error` and does not hide the other
+engines. Entry points exist only once the package is installed, so run
+`pip install -e .` again after adding one.
+
+Command-line flags are still declared centrally in `src/refina/params.py`; a
+new engine that needs its own flags or should be accepted by `--engine` must be
+added there as well.

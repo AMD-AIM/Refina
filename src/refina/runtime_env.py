@@ -11,14 +11,6 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_ENGINE_ENV = {
-    "swift": "swift",
-    "trl": "trl",
-    "easydistill": "easydistill",
-    # Generation runs in the EasyDistill environment and launches Swift through
-    # the explicit executable exported below.
-    "easydistill-swift": "easydistill",
-}
 _WORKER_MARKER = "REFINA_ENGINE_WORKER"
 
 
@@ -32,7 +24,10 @@ def environments_root() -> Path:
 
 
 def engine_python(engine: str) -> Path | None:
-    env_name = _ENGINE_ENV.get(engine)
+    from .engines.registry import specs  # lazy: refina.engines imports this module
+
+    spec = specs().get(engine)
+    env_name = spec.env if spec else None
     if env_name is None:
         return None
     override = os.environ.get(f"REFINA_{env_name.upper()}_PYTHON")
