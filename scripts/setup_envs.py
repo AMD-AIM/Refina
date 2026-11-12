@@ -20,7 +20,9 @@ SOURCES = {
     "trl": ROOT / "third_party" / "trl",
     "easydistill": ROOT / "third_party" / "easydistill",
 }
-SUPPORTED_ENGINES = ("swift", "trl", "easydistill", "yolo")
+SUPPORTED_ENGINES = ("swift", "trl", "easydistill", "yolo", "ultralytics")
+BASE_PTH_NAME = "_refina_base.pth"
+PINNED_BASE_PACKAGES = ("torch", "torchvision", "torchaudio", "triton", "vllm")
 
 
 def run(command: list[str], *, env: dict[str, str] | None = None) -> None:
@@ -38,6 +40,28 @@ def initialise_submodules() -> None:
     run(["git", "submodule", "update", "--init", "--recursive", "--depth", "1"])
 
 
+def _purelib(python: str) -> str:
+    return subprocess.check_output(
+        [python, "-c", "import sysconfig;print(sysconfig.get_paths()['purelib'])"],
+        text=True,
+    ).strip()
+
+
+def base_site_packages(base_python: str) -> Path | None:
+    """site-packages of ``base_python`` when it is itself a venv, else None.
+
+    ``--system-site-packages`` links a new venv to the interpreter the base venv
+    was made from, so packages installed in the base venv (the image's ROCm
+    Torch in ``/opt/venv``) would otherwise be invisible to the engine venvs.
+    """
+    code = (
+        "import sys,sysconfig;"
+        "print(sysconfig.get_paths()['purelib'] if sys.prefix != sys.base_prefix else '')"
+    )
+    value = subprocess.check_output([base_python, "-c", code], text=True).strip()
+    return Path(value) if value else None
+
+
 def create_environment(path: Path, base_python: str) -> Path:
     python = path / "bin" / "python"
     if not python.is_file():
@@ -53,7 +77,11 @@ def create_environment(path: Path, base_python: str) -> Path:
             )
         else:
             venv.EnvBuilder(with_pip=True, system_site_packages=True).create(path)
-    (path / ".distill-run-runtime").write_text(str(path.resolve()) + "\n", encoding="utf-8")
+    base = base_site_packages(base_python)
+    if base is not None:
+        pth = Path(_purelib(str(python))) / BASE_PTH_NAME
+        pth.write_text(f"{base}\n", encoding="utf-8")
+    (path / ".refina-runtime").write_text(str(path.resolve()) + "\n", encoding="utf-8")
     return python
 
 
@@ -61,7 +89,7 @@ def base_constraints() -> Path:
     STATE.mkdir(exist_ok=True)
     path = STATE / "base-constraints.txt"
     packages = []
-    for name in ("torch", "vllm"):
+    for name in PINNED_BASE_PACKAGES:
         try:
             packages.append(f"{name}=={metadata.version(name)}")
         except metadata.PackageNotFoundError:
@@ -208,7 +236,7 @@ def main() -> int:
         python = create_environment(ENVS / name, args.python)
         install_engine(name, python, args, constraints)
     write_lock(args.profile, engines, args.python, core_dir)
-    doctor = [str(core_python), "-m", "distill_run", "doctor"]
+    doctor = [str(core_python), "-m", "refina", "doctor"]
     for name in engines:
         doctor += ["--engine", name]
     run(doctor)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared configuration for the distill-run workflow.
+# Shared configuration for the refina workflow.
 # Override anything by exporting it before calling ./run.sh.
 
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
@@ -14,7 +14,7 @@ HOST_UID="${HOST_UID:-$(id -u)}"
 HOST_GID="${HOST_GID:-$(id -g)}"
 KFD_GID="${KFD_GID:-$(stat -c %g /dev/kfd 2>/dev/null || echo "$HOST_GID")}"
 RENDER_GID="${RENDER_GID:-$(stat -c %g /dev/dri/renderD128 2>/dev/null || echo "$KFD_GID")}"
-DISTILL_RUN_ENVS_ROOT="${DISTILL_RUN_ENVS_ROOT:-$CONTAINER_WORKDIR/.venvs}"
+REFINA_ENVS_ROOT="${REFINA_ENVS_ROOT:-$CONTAINER_WORKDIR/.venvs}"
 
 # Framework source trees are pinned Git submodules inside this repository.
 EASYDISTILL_SRC="${EASYDISTILL_SRC:-$CONTAINER_WORKDIR/third_party/easydistill}"

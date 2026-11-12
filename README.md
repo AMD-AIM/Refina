@@ -1,4 +1,4 @@
-# distill-run
+# Refina
 
 One command for knowledge distillation, in two flavours:
 
@@ -15,8 +15,8 @@ environments, while the core CLI and test suite remain usable without Torch.
 ## Quick start
 
 ```bash
-git clone --recursive <distill-run-repository>
-cd distill-run
+git clone --recursive https://github.com/AMD-AIM/Refina.git
+cd refina
 make dev PROFILE=rocm714
 
 ./run.sh install                   # start distill2 and install the frameworks
@@ -32,7 +32,7 @@ hard-coded in the Python.
 | Command | What it does |
 | --- | --- |
 | `./run.sh up` / `down` / `shell` / `status` | `distill2` container lifecycle |
-| `./run.sh install` | installs EasyDistill, TRL, ms-swift and distill-run in the container |
+| `./run.sh install` | installs EasyDistill, TRL, ms-swift and refina in the container |
 | `./run.sh generate` | seed instructions → teacher API → SFT JSONL |
 | `DATASET=<jsonl> ./run.sh sft` | trains the student on an existing SFT JSONL |
 | `./run.sh easydistill-swift` | EasyDistill generation + Swift training |
@@ -41,14 +41,14 @@ hard-coded in the Python.
 | `./run.sh trl-zero3` | ZeRO-3 white-box distillation for teachers larger than one GPU |
 | `./run.sh test` | unit tests plus the CLI smoke script, on the host |
 | `./run.sh smoke` | tiny end-to-end run in the container (needs GPUs) |
-| `./run.sh cli ...` | raw `distill-run` invocation inside the container |
+| `./run.sh cli ...` | raw `refina` invocation inside the container |
 
 Discover the currently supported capabilities without supplying `--engine`:
 
 ```bash
-distill-run --models
-distill-run --datasets
-distill-run --engines
+refina --models
+refina --datasets
+refina --engines
 ```
 
 These commands print YAML suitable for both humans and scripts. Unknown engine
@@ -58,7 +58,7 @@ corresponding supported names or discovered local paths in their error message.
 ## Calling the CLI directly
 
 ```bash
-distill-run --engine easydistill-swift \
+refina --engine easydistill-swift \
   --teacher-base-url http://127.0.0.1:8000/v1 \
   --teacher-model-id /models/Qwen3.8-27B \
   --input examples/seed_instructions.jsonl \
@@ -81,9 +81,9 @@ External files are optional. Each engine has a built-in production default
 config, and any field can be supplied in the command:
 
 ```bash
-distill-run --engine trl --show-default-config
+refina --engine trl --show-default-config
 
-distill-run --engine trl \
+refina --engine trl \
   --teacher /models/teacher --student /models/student \
   --dataset /data/prompts.jsonl --output /output/trl \
   --max-steps 500 \
@@ -97,7 +97,7 @@ available for rare framework-specific keys. Precedence is: built-in defaults,
 then `--config`, then `--config-json`, then `--set`, then explicit flags such as
 `--learning-rate`.
 
-Run `distill-run --help` for the authoritative list. See
+Run `refina --help` for the authoritative list. See
 [`docs/cli-parameters.md`](docs/cli-parameters.md) for the parameter ownership,
 defaults and compatibility tables, [`docs/datasets.md`](docs/datasets.md) for
 Hub/Parquet normalization, and `docs/engines.md` for engine behavior.
@@ -113,12 +113,12 @@ Omitting `--num-processes` defaults to one process and exposes only logical GPU
 
 ```bash
 # ms-swift uses torchrun internally
-distill-run --engine swift --num-processes 4 \
+refina --engine swift --num-processes 4 \
   --student /models/student --dataset /output/sft.jsonl \
   --output /output/swift-4gpu --learning-rate 1e-4 --lora-rank 8
 
-# TRL relaunches distill-run ranks under Accelerate
-distill-run --engine trl --num-processes 6 --distributed-strategy zero3 \
+# TRL relaunches refina ranks under Accelerate
+refina --engine trl --num-processes 6 --distributed-strategy zero3 \
   --teacher /models/teacher --student /models/student \
   --dataset examples/prompts.jsonl --output /output/trl-6gpu \
   --max-steps 100 --learning-rate 1e-5 --lora-rank 8
@@ -137,12 +137,17 @@ Failures are separated so a shell script can tell a typo from a dead teacher.
 | 2 | bad or missing arguments |
 | 3 | config file invalid |
 | 4 | dataset content invalid |
-| 5 | dataset could not be fetched |
+| 5 | dataset could not be fetched, or a dataset/weights `sha256` did not match |
 | 6 | teacher endpoint unreachable |
 | 7 | preflight failed (weights missing, disk full, …) |
 | 8 | engine failed |
 | 9 | out of memory |
-| 130 | cancelled by Ctrl-C / SIGTERM |
+| 10 | results could not be reported to the platform |
+| 130 | cancelled by Ctrl-C / SIGTERM (code `Cancelled`), or by the report_to platform (code `PlatformCancelled`) |
+
+The process also writes one `REFINA_EVENT <json>` line on stdout per stage,
+per epoch, and at exit; see
+[`docs/engines.md`](docs/engines.md#progress-events).
 
 ## How a run is put together
 
@@ -174,7 +179,7 @@ are copied or uploaded first. The `/models`, `/data`, and `/output` path
 conventions remain available for deployments that can mount volumes.
 
 ```text
-src/distill_run/
+src/refina/
   cli.py          entrypoint: parse, dispatch, single exit funnel
   params.py       the parameter table — the parser, validation and per-engine
                   accepted sets are all derived from it
@@ -221,3 +226,5 @@ profile and exact submodule commits are recorded in
 
 `pip install -e .` remains valid for installing only the lightweight core. It
 does not perform network or Git operations.
+
+See [docs/container-image.md](docs/container-image.md) for the container image.

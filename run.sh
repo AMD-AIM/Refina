@@ -1,31 +1,31 @@
 #!/usr/bin/env bash
-# Single entrypoint for the distill-run workflow on this machine.
+# Single entrypoint for the refina workflow on this machine.
 set -euo pipefail
 cd "$(dirname "$0")" && source ./env.sh
 
 CMD="${1:-help}"
 [[ $# -gt 0 ]] && shift || true
 
-# Run distill-run inside the container with the shared env pre-exported, so a
+# Run refina inside the container with the shared env pre-exported, so a
 # command line only has to name what differs from env.sh.
 in_container() {
   ./docker_ctl.sh start
   local -a extra_env=()
-  local runner="distill-run"
-  if [[ -x "$REPO_DIR/.venvs/core/bin/distill-run" ]]; then
-    runner="$DISTILL_RUN_ENVS_ROOT/core/bin/distill-run"
+  local runner="refina"
+  if [[ -x "$REPO_DIR/.venvs/core/bin/refina" ]]; then
+    runner="$REFINA_ENVS_ROOT/core/bin/refina"
   fi
   if [[ -n "${NPROC_PER_NODE:-}" ]]; then
     extra_env+=(-e "NPROC_PER_NODE=$NPROC_PER_NODE")
   fi
-  if [[ -n "${DISTILL_GPU:-}" ]]; then
+  if [[ -n "${REFINA_GPU:-}" ]]; then
     # Logical index within TRAIN_GPUS. A single-process TRL run must see one
     # device; exposing all six makes Trainer and the embedding weights disagree.
-    extra_env+=(-e "HIP_VISIBLE_DEVICES=$DISTILL_GPU")
+    extra_env+=(-e "HIP_VISIBLE_DEVICES=$REFINA_GPU")
   fi
   docker exec -i -w "$CONTAINER_WORKDIR" \
     -e HOME="$RUNTIME_WORK_DIR/home" \
-    -e DISTILL_RUN_ENVS_ROOT="$DISTILL_RUN_ENVS_ROOT" \
+    -e REFINA_ENVS_ROOT="$REFINA_ENVS_ROOT" \
     -e TEACHER_BASE_URL="$TEACHER_BASE_URL" \
     -e TEACHER_MODEL_ID="$TEACHER_MODEL_ID" \
     -e TEACHER_API_KEY="$TEACHER_API_KEY" \
@@ -46,11 +46,11 @@ in_container_distributed() {
   local processes="${DISTRIBUTED_PROCESSES:-${FSDP_PROCESSES:-6}}"
   local accelerate="accelerate"
   if [[ -x "$REPO_DIR/.venvs/trl/bin/accelerate" ]]; then
-    accelerate="$DISTILL_RUN_ENVS_ROOT/trl/bin/accelerate"
+    accelerate="$REFINA_ENVS_ROOT/trl/bin/accelerate"
   fi
   docker exec -i -w "$CONTAINER_WORKDIR" \
     -e HOME="$RUNTIME_WORK_DIR/home" \
-    -e DISTILL_RUN_ENVS_ROOT="$DISTILL_RUN_ENVS_ROOT" \
+    -e REFINA_ENVS_ROOT="$REFINA_ENVS_ROOT" \
     -e STUDENT_MODEL="$STUDENT_MODEL" \
     -e TEACHER_MODEL="$TEACHER_MODEL" \
     -e WORK_DIR="$RUNTIME_WORK_DIR" \
@@ -61,7 +61,7 @@ in_container_distributed() {
       --config_file "$launch_config" \
       --num_processes "$processes" \
       --main_process_port "${MASTER_PORT:-29510}" \
-      --module distill_run "$@"
+      --module refina "$@"
 }
 
 require_teacher() {
@@ -102,7 +102,7 @@ case "$CMD" in
 
   trl)
     id="$(run_id)"
-    export DISTILL_GPU="${DISTILL_GPU:-0}"
+    export REFINA_GPU="${REFINA_GPU:-0}"
     in_container --engine trl \
       --config "${CONFIG:-configs/trl/trl_distill.yaml}" \
       --data "${DATASET:-examples/seed_instructions.jsonl}" \
@@ -145,7 +145,7 @@ case "$CMD" in
       --config configs/easydistill-swift/smoke.yaml \
       --input examples/seed_instructions.jsonl \
       --output "$OUTPUT_DIR/$id-easydistill-swift" --run-id "$id-es"
-    DISTILL_GPU="${DISTILL_GPU:-0}" in_container --engine trl \
+    REFINA_GPU="${REFINA_GPU:-0}" in_container --engine trl \
       --config configs/smoke/trl_distill.yaml \
       --teacher "${TRL_SMOKE_TEACHER:-$STUDENT_MODEL}" \
       --data examples/seed_instructions.jsonl \
@@ -155,10 +155,10 @@ case "$CMD" in
 
   help|*)
     cat <<EOF
-usage: $0 <command> [extra distill-run args...]
+usage: $0 <command> [extra refina args...]
 
   up | down | shell | status     container lifecycle ($CONTAINER_NAME)
-  install                        install frameworks + distill-run in the container
+  install                        install frameworks + refina in the container
   teacher-check                  verify the teacher endpoint answers
 
   generate                       seed -> teacher API -> SFT JSONL
@@ -167,7 +167,7 @@ usage: $0 <command> [extra distill-run args...]
   trl-fsdp                       sharded white-box distillation across train GPUs
   trl-zero3                      ZeRO-3 white-box distillation for oversized teachers
   easydistill-swift             EasyDistill generation + Swift training
-  cli ...                        raw distill-run invocation in the container
+  cli ...                        raw refina invocation in the container
 
   test                           host-side unit tests + CLI smoke
   smoke                          in-container end-to-end smoke (needs GPUs)
@@ -177,7 +177,7 @@ settings go in front of the command, e.g.
   NPROC_PER_NODE=4 $0 easydistill-swift
   INPUT=my_seed.jsonl CONFIG=configs/easydistill-swift/smoke.yaml $0 easydistill-swift
 
-recognised: INPUT, DATASET, CONFIG, RUN_ID, NPROC_PER_NODE, DISTILL_GPU,
+recognised: INPUT, DATASET, CONFIG, RUN_ID, NPROC_PER_NODE, REFINA_GPU,
             DISTRIBUTED_PROCESSES, FSDP_PROCESSES, MASTER_PORT
 
 teacher : $TEACHER_BASE_URL ($TEACHER_MODEL_ID)

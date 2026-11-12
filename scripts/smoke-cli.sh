@@ -4,7 +4,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
-DISTILL_RUN="${DISTILL_RUN:-.venv/bin/python -m distill_run}"
+REFINA="${REFINA:-.venv/bin/python -m refina}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 FAILED=0
@@ -13,7 +13,7 @@ expect() {
   local want="$1" name="$2"
   shift 2
   local log="$TMP/$name.log"
-  $DISTILL_RUN "$@" >"$log" 2>&1
+  $REFINA "$@" >"$log" 2>&1
   local got=$?
   if [[ "$got" == "$want" ]]; then
     printf '\033[1;32m[ OK ]\033[0m %-42s exit=%s\n' "$name" "$got"

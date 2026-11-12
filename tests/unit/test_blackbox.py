@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from distill_run.engines.base import RunResult
-from distill_run.engines.easydistill_swift import EasyDistillSwiftEngine
-from distill_run.errors import CancelledError
-from distill_run.utils import write_jsonl
+from refina.engines.base import RunResult
+from refina.engines.easydistill_swift import EasyDistillSwiftEngine
+from refina.errors import CancelledError
+from refina.utils import write_jsonl
 from tests.unit.test_preflight import make_ctx
 
 
@@ -29,7 +29,7 @@ def _ctx(tmp_path: Path, config: dict | None = None):
         config=config or {},
     )
     (tmp_path / "run").mkdir(parents=True, exist_ok=True)
-    from distill_run.dataset import DatasetSpec, ResolvedDataset
+    from refina.dataset import DatasetSpec, ResolvedDataset
 
     ctx.datasets["input"] = ResolvedDataset(spec=DatasetSpec(uri=str(seed)), path=seed)
     return ctx
@@ -114,7 +114,7 @@ def test_substep_output_overrides_the_top_level_one(tmp_path: Path):
 
 
 def test_generation_writes_to_the_context_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    from distill_run.engines.easydistill import EasyDistillEngine
+    from refina.engines.easydistill import EasyDistillEngine
 
     engine = EasyDistillSwiftEngine()
     ctx = _ctx(tmp_path)

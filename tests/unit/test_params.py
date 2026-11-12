@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from distill_run import params as P
-from distill_run.cli import build_parser
+from refina import params as P
+from refina.cli import build_parser
 
 
 def test_parser_exposes_every_flag_and_alias():

@@ -1,5 +1,5 @@
 # Black-box stage one: seed instructions -> teacher API -> SFT JSONL.
-# distill-run overwrites dataset.input_path with the resolved local path and
+# refina overwrites dataset.input_path with the resolved local path and
 # dataset.output_path with --output, so leave those to the CLI in production.
 job_type: instruct_distill
 

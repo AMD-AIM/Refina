@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from distill_run.config import (
+from refina.config import (
     apply_config_overrides,
     check_required,
     deep_merge,
@@ -12,8 +12,8 @@ from distill_run.config import (
     load_inline_config,
     merge_sources,
 )
-from distill_run.defaults import engine_defaults
-from distill_run.errors import ConfigError, UsageError
+from refina.defaults import engine_defaults
+from refina.errors import ConfigError, UsageError
 
 
 def test_args_win_over_env():

@@ -25,10 +25,13 @@ _CONTRACT_ENV = {
 def _isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Keep tests off real paths and away from inherited configuration."""
     for var in list(os.environ):
-        if var.startswith(("DISTILL_", "TEACHER_", "DATASET_")) or var in _CONTRACT_ENV:
+        if var.startswith(("REFINA_", "TEACHER_", "DATASET_")) or var in _CONTRACT_ENV:
             monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("WORK_DIR", str(tmp_path / "work"))
     monkeypatch.setenv("HF_HOME", str(tmp_path / "hf"))
+    # Inside the image the default envs root holds real engine venvs, and the CLI
+    # would exec into one of them, replacing the pytest process.
+    monkeypatch.setenv("REFINA_ENVS_ROOT", str(tmp_path / "no-engine-envs"))
 
 
 @pytest.fixture

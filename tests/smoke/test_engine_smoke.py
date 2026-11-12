@@ -2,7 +2,7 @@
 
 Skipped by default so ``pytest`` stays green anywhere::
 
-    DISTILL_SMOKE=1 \
+    REFINA_SMOKE=1 \
       STUDENT=/models/Qwen3-0.6B TEACHER=/models/Qwen3.8-27B \
       TEACHER_BASE_URL=http://127.0.0.1:8000/v1 \
       TEACHER_MODEL_ID=/models/Qwen3.8-27B \
@@ -18,13 +18,13 @@ from pathlib import Path
 
 import pytest
 
-from distill_run.cli import main
-from distill_run.errors import ExitCode
+from refina.cli import main
+from refina.errors import ExitCode
 
 pytestmark = [
     pytest.mark.gpu,
     pytest.mark.slow,
-    pytest.mark.skipif(os.environ.get("DISTILL_SMOKE") != "1", reason="set DISTILL_SMOKE=1"),
+    pytest.mark.skipif(os.environ.get("REFINA_SMOKE") != "1", reason="set REFINA_SMOKE=1"),
 ]
 
 REPO = Path(__file__).resolve().parents[2]

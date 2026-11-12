@@ -10,25 +10,25 @@ from types import SimpleNamespace
 
 import pytest
 
-from distill_run import preflight
-from distill_run.config import merge_sources
-from distill_run.context import RunContext
-from distill_run.engines.easydistill import EasyDistillEngine
-from distill_run.engines.easydistill_swift import EasyDistillSwiftEngine
-from distill_run.engines.swift import (
+from refina import preflight
+from refina.config import merge_sources
+from refina.context import RunContext
+from refina.engines.easydistill import EasyDistillEngine
+from refina.engines.easydistill_swift import EasyDistillSwiftEngine
+from refina.engines.swift import (
     SwiftEngine,
     check_distributed_dataset_size,
     latest_checkpoint,
     require_checkpoint,
 )
-from distill_run.engines.trl import (
+from refina.engines.trl import (
     DEFAULT_MODEL_INIT,
     TrlEngine,
     check_model_compatibility,
     has_tied_embeddings,
 )
-from distill_run.errors import ConfigError, EngineError, PreflightError, TeacherUnavailableError
-from distill_run.signals import Cancellation
+from refina.errors import ConfigError, EngineError, PreflightError, TeacherUnavailableError
+from refina.signals import Cancellation
 
 
 def make_ctx(engine: str, tmp_path: Path, args: dict, config: dict | None = None) -> RunContext:
@@ -144,7 +144,7 @@ def test_swift_rejects_a_missing_student_path(tmp_path: Path):
     )
     with pytest.raises(
         PreflightError,
-        match=r"(?s)student weights path.*(available local models|distill-run --models)",
+        match=r"(?s)student weights path.*(available local models|refina --models)",
     ):
         SwiftEngine().preflight(ctx)
 
@@ -343,7 +343,7 @@ def test_trl_rejects_device_map_under_fsdp(tmp_path: Path, monkeypatch: pytest.M
     teacher = weights(tmp_path, "trl-teacher")
     monkeypatch.setenv("WORLD_SIZE", "2")
     monkeypatch.setattr(
-        "distill_run.engines.trl.check_model_compatibility",
+        "refina.engines.trl.check_model_compatibility",
         lambda *_args: None,
     )
     monkeypatch.setattr(preflight, "trl_arg_names", lambda: set())
@@ -380,7 +380,7 @@ def test_trl_rejects_tied_embeddings_under_fsdp2(tmp_path: Path, monkeypatch: py
     monkeypatch.setenv("WORLD_SIZE", "2")
     monkeypatch.setattr(preflight, "trl_arg_names", lambda: set())
     monkeypatch.setattr(
-        "distill_run.engines.trl.check_model_compatibility",
+        "refina.engines.trl.check_model_compatibility",
         lambda *_args: None,
     )
     ctx = make_ctx(
@@ -412,4 +412,4 @@ def test_writable_probe_is_safe_across_ranks(tmp_path: Path):
     for worker in workers:
         worker.join(timeout=10)
         assert worker.exitcode == 0
-    assert list(output.glob(".distill-run-write-probe-*")) == []
+    assert list(output.glob(".refina-write-probe-*")) == []

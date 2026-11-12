@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from distill_run.dataset import DatasetSpec, resolve
-from distill_run.errors import DataError, DatasetFetchError
-from distill_run.utils import read_jsonl
+from refina.dataset import DatasetSpec, resolve
+from refina.errors import DataError, DatasetFetchError
+from refina.utils import read_jsonl
 
 
 def test_local_path_needs_no_download(tmp_path: Path):
@@ -52,7 +52,7 @@ def test_http_download_then_cache_hit(tmp_path: Path, monkeypatch: pytest.Monkey
             assert url == "https://example.com/seed.jsonl"
             return FakeResponse()
 
-    monkeypatch.setattr("distill_run.fetchers.http_session", lambda: FakeSession())
+    monkeypatch.setattr("refina.fetchers.http_session", lambda: FakeSession())
 
     cache = tmp_path / "cache"
     spec = DatasetSpec(uri="https://example.com/seed.jsonl")
@@ -72,7 +72,7 @@ def test_failed_download_leaves_no_cache_entry(tmp_path: Path, monkeypatch: pyte
         def get(self, *_args, **_kwargs):
             raise RuntimeError("network down")
 
-    monkeypatch.setattr("distill_run.fetchers.http_session", lambda: Boom())
+    monkeypatch.setattr("refina.fetchers.http_session", lambda: Boom())
     cache = tmp_path / "cache"
     with pytest.raises(RuntimeError, match="network down"):
         resolve(DatasetSpec(uri="https://example.com/seed.jsonl"), cache)

@@ -1,6 +1,6 @@
 # 数据集下载与标准化
 
-`distill-run` 会在模型加载前完成数据下载、格式识别、字段标准化和抽样。
+`refina` 会在模型加载前完成数据下载、格式识别、字段标准化和抽样。
 所有引擎最终接收本地规范 JSONL，因此 Hugging Face 或 ModelScope 仓库中的
 Parquet/Arrow 文件不需要手工转换。
 
@@ -17,7 +17,7 @@ Parquet 和 Arrow 需要 `datasets` 与 `pyarrow`。容器训练镜像已包含�
 独立安装可使用：
 
 ```bash
-pip install 'distill-run[dataset,hub]'
+pip install 'refina[dataset,hub]'
 ```
 
 ## 自动字段映射
@@ -66,7 +66,7 @@ seed 会得到相同样本。未设置 `--dataset-max-samples` 时保留原始�
 直接使用 Hugging Face Parquet SFT 数据训练 Swift：
 
 ```bash
-distill-run --engine swift \
+refina --engine swift \
   --student /models/Qwen3-0.6B \
   --dataset hf://HuggingFaceH4/no_robots \
   --dataset-split train \
@@ -81,7 +81,7 @@ distill-run --engine swift \
 回答，再交给 teacher 重新生成：
 
 ```bash
-distill-run --engine easydistill-swift \
+refina --engine easydistill-swift \
   --teacher-base-url http://127.0.0.1:8000/v1 \
   --teacher-model-id /models/Qwen3.8-27B \
   --input hf://HuggingFaceH4/no_robots \

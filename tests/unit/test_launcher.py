@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from distill_run import launcher
+from refina import launcher
 
 
 def test_single_process_unless_explicitly_requested(monkeypatch: pytest.MonkeyPatch):

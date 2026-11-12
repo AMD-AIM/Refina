@@ -1,6 +1,7 @@
 # CLI 参数分层与兼容矩阵
 
-`distill-run` 目前提供 69 个一级参数。参数不是所有引擎通用：解析后会根据
+`refina` 目前提供 80 个一级参数（另有 `--models`、`--datasets`、`--engines`
+三个目录查询参数）。参数不是所有引擎通用：解析后会根据
 `--engine` 校验，不属于当前引擎的参数会直接报错，不会被静默忽略。
 
 参数分为六层：
@@ -12,14 +13,14 @@
 5. TRL 白盒蒸馏专属参数。
 6. 模型、数据与分布式运行参数。
 
-当前命令形式是 `distill-run --engine trl ...`。如果未来改为
-`distill-run trl ...` 子命令，参数归属保持不变，只改变帮助信息和解析形式：
-`distill-run trl --help` 只显示全局、通用训练及 TRL 专属参数。
+当前命令形式是 `refina --engine trl ...`。如果未来改为
+`refina trl ...` 子命令，参数归属保持不变，只改变帮助信息和解析形式：
+`refina trl --help` 只显示全局、通用训练及 TRL 专属参数。
 
 图例：✓ 表示引擎接受该参数，— 表示不接受。`E` = EasyDistill，
 `S` = Swift，`T` = TRL，`ES` = EasyDistill-Swift。
 
-## 全局运行参数（15）
+## 全局运行参数（18）
 
 | 参数 | 类型 | 默认值 | E | S | T | ES | 说明 |
 | --- | --- | --- | :-: | :-: | :-: | :-: | --- |
@@ -30,7 +31,7 @@
 | `--show-default-config` | bool | false | ✓ | ✓ | ✓ | ✓ | 打印当前引擎内置配置后退出 |
 | `--set` | `key=value` | 无 | ✓ | ✓ | ✓ | ✓ | 覆盖未提升为一级参数的框架字段，可重复 |
 | `--run-id` | string | 时间戳 ID | ✓ | ✓ | ✓ | ✓ | 本次运行标识 |
-| `--work-dir` | path | `~/.cache/distill-run` | ✓ | ✓ | ✓ | ✓ | 缓存及中间文件目录 |
+| `--work-dir` | path | `~/.cache/refina` | ✓ | ✓ | ✓ | ✓ | 缓存及中间文件目录 |
 | `--model-cache-dir` | path | `<work-dir>/models` | — | ✓ | ✓ | ✓ | Hub 模型的容器本地缓存 |
 | `--model-revision` | string | Hub 默认版本 | — | ✓ | ✓ | ✓ | Teacher/Student 模型 revision 或 commit |
 | `--dataset-cache-dir` | path | `<work-dir>/cache` | ✓ | ✓ | ✓ | ✓ | 网络数据集缓存目录 |
@@ -40,6 +41,7 @@
 | `--dataset-split` | string | `train` | ✓ | ✓ | ✓ | ✓ | 选择 train、validation、test 等 split |
 | `--dataset-max-samples` | int | 无限制 | ✓ | ✓ | ✓ | ✓ | 确定性抽样的最大标准化样本数 |
 | `--dataset-shuffle-seed` | int | `42` | ✓ | ✓ | ✓ | ✓ | 抽样随机种子 |
+| `--dataset-sha256` | string | 无 | ✓ | ✓ | ✓ | ✓ | 数据文件的 `sha256:<hex>`；不匹配时退出码 5（环境变量 `DATASET_SHA256`） |
 
 ## 教师生成参数（14）
 
@@ -117,7 +119,7 @@ TRL 同时接受教师生成参数表中的 `--temperature`。
 | `--main-process-port` | int | `29500` | — | ✓ | ✓ | ✓ | 分布式 rendezvous 端口 |
 | `--device` | int | `0` | — | ✓ | ✓ | ✓ | 单进程使用的逻辑 GPU |
 
-## YOLO 检测训练参数（8）
+## YOLO 检测训练参数（9）
 
 `--engine yolo` 不在上面的矩阵里。它接受全局运行参数（`--model-revision` 除外，
 数据集的 format、subset、split 和抽样参数会被忽略），以及 `--student`/`--model`、
@@ -135,13 +137,38 @@ TRL 同时接受教师生成参数表中的 `--temperature`。
 | `--amp` / `--no-amp` | bool | true | `YOLO_AMP` | 混合精度（前向 fp16，损失 fp32） |
 | `--optimizer` | string | `auto` | `YOLO_OPTIMIZER` | `auto`、`SGD`、`Adam` 或 `AdamW` |
 | `--close-mosaic` | int | `10` | `YOLO_CLOSE_MOSAIC` | 最后 N 个 epoch 关闭 mosaic |
+| `--model-sha256` | string | 无 | `STUDENT_MODEL_SHA256` | 权重文件的 `sha256:<hex>`；不匹配时退出码 5 |
 
 ```bash
-distill-run --engine yolo --model yolo26n.pt --data /data/coco8 \
+refina --engine yolo --model yolo26n.pt --data /data/coco8 \
   --epochs 100 --imgsz 640 --batch -1 --device 0 --output /output/yolo26n
 ```
 
 模型与数据的取值方式见 [`engines.md`](engines.md#yolo--object-detection-training)。
+
+## Ultralytics 引擎与平台上报参数（7）
+
+`--engine ultralytics` 接受全局运行参数、`--student`/`--model`、`--dataset`/`--data`、
+`--resume`、`--device`、`--learning-rate`（映射到 `lr0`），以及上表中除
+`--pretrained` 外的 YOLO 参数（映射到 `train_args` 的同名键）。专属参数如下：
+
+| 参数 | 类型 | 默认值 | 环境变量 | 说明 |
+| --- | --- | --- | --- | --- |
+| `--train-args` | JSON 或 `key=value` | `{}` | `ULTRALYTICS_TRAIN_ARGS` | Ultralytics `train()` 参数，按白名单过滤；一级参数优先 |
+| `--report-to-url` | URL | 无 | `REPORT_TO_API_BASE_URL` | 平台地址；设置后开启上报，token 从 `REPORT_TO_TOKEN` 读取 |
+| `--report-to-model` | `owner/project/model` | 无 | `REPORT_TO_MODEL` | 上报时的项目与模型名 |
+| `--report-to-model-id` | string | 无 | `REPORT_TO_MODEL_ID` | 绑定到平台上已存在的模型；`rest` 模式下即上传用的 `assetId`，必填 |
+| `--report-to-protocol` | string | `webhook` | `REPORT_TO_PROTOCOL` | `webhook`：Ultralytics 自带回调；`rest`：公开 REST（上传 + `PATCH /api/models/...`） |
+| `--report-to-metrics-every-epochs` | int | `1` | `REPORT_TO_METRICS_EVERY_EPOCHS` | 每 N 轮上报一次指标（`report_to.metrics_every_epochs`，≥1），两种上报方式都生效；训练结束时的最终指标照常上报 |
+| `--report-to-checkpoint-every-epochs` | int | `10` | `REPORT_TO_CHECKPOINT_EVERY_EPOCHS` | 每 N 轮上传一次中间 checkpoint（`report_to.checkpoint_every_epochs`，≥0，0 表示不传），两种上报方式都生效；最后一轮不传，交给最终上传 |
+| `--dataset-slug` | `owner/dataset`，最长 100 个字符 | 无 | `DATASET_SLUG` | 签名 URL 过期时用它重新获取导出链接；超过 100 个字符以退出码 3 结束 |
+| `--dataset-version` | int | 最新 | `DATASET_VERSION` | 重新获取链接时的数据集版本 |
+
+上报 token 只能通过环境变量传入（变量名可用 `report_to.token_env` 修改），
+不会出现在日志和输出文件里。训练完成但平台没有收到权重或 `training_complete`
+时退出码为 10。上报路径和状态值通过 `report_to.*` 配置（例如
+`--set report_to.metadata.session_id=…`）。白名单、两种上报方式、心跳和事件格式见
+[`engines.md`](engines.md#ultralytics--object-detection-through-the-ultralytics-package)。
 
 ## 配置优先级
 
@@ -163,7 +190,7 @@ distill-run --engine yolo --model yolo26n.pt --data /data/coco8 \
 ### EasyDistill
 
 ```bash
-distill-run --engine easydistill \
+refina --engine easydistill \
   --teacher-base-url http://teacher:8000/v1 \
   --teacher-model-id Qwen3.5-27B \
   --input hf://organization/seed-dataset \
@@ -174,7 +201,7 @@ distill-run --engine easydistill \
 ### Swift
 
 ```bash
-distill-run --engine swift \
+refina --engine swift \
   --student /models/Qwen3-0.6B \
   --dataset /data/sft.jsonl \
   --output /output/swift \
@@ -187,7 +214,7 @@ distill-run --engine swift \
 ### TRL
 
 ```bash
-distill-run --engine trl \
+refina --engine trl \
   --teacher /models/Qwen3.8-27B \
   --student /models/Qwen3.5-0.8B \
   --dataset /data/prompts.jsonl \
@@ -202,7 +229,7 @@ distill-run --engine trl \
 ### EasyDistill-Swift
 
 ```bash
-distill-run --engine easydistill-swift \
+refina --engine easydistill-swift \
   --teacher-base-url http://teacher:8000/v1 \
   --teacher-model-id Qwen3.5-27B \
   --input /data/seed.jsonl \
@@ -216,7 +243,7 @@ distill-run --engine easydistill-swift \
 `--set dotted.path=value` 只用于尚未提升为一级参数的框架选项，例如：
 
 ```bash
-distill-run --engine trl ... \
+refina --engine trl ... \
   --set trl.weight_decay=0.01 \
   --set trl.lr_scheduler_type=cosine
 ```
