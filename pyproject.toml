@@ -23,9 +23,19 @@ dependencies = [
 hub = ["huggingface_hub>=0.23"]
 dataset = ["datasets>=2.18", "pyarrow>=14"]
 dev = ["pytest>=8.0", "ruff>=0.5"]
+trl = ["trl>=1.17,<1.18"]
+# PyPI only has a 0.0.1 placeholder named easydistill, so pin the upstream tag.
+easydistill = ["easydistill @ git+https://github.com/modelscope/easydistill@v2.0.0"]
 
 [project.scripts]
 refina = "refina.cli:main"
+
+[project.entry-points."refina.engines"]
+easydistill = "refina.engines.easydistill:SPEC"
+swift = "refina.engines.swift:SPEC"
+trl = "refina.engines.trl:SPEC"
+easydistill-swift = "refina.engines.easydistill_swift:SPEC"
+noop = "refina.engines.noop:SPEC"
 
 [tool.setuptools.packages.find]
 where = ["src"]

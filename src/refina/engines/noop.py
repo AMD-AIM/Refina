@@ -13,6 +13,7 @@ from ..context import RunContext
 from ..errors import EngineError
 from ..utils import atomic_write_json
 from .base import Engine, RunResult
+from .spec import EngineSpec
 
 logger = logging.getLogger(__name__)
 
@@ -51,3 +52,14 @@ class NoopEngine(Engine):
             },
         )
         return RunResult(artifacts=[artifact], message=f"wrote {artifact}")
+
+
+SPEC = EngineSpec(
+    name="noop",
+    factory="refina.engines.noop:NoopEngine",
+    framework="built-in",
+    mode="CLI test engine",
+    input="none",
+    defaults={},
+    internal=True,
+)

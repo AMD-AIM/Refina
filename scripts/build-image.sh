@@ -7,15 +7,15 @@
 # CCR_PASSWORD is optional (an existing `docker login` is reused) and only ever
 # reaches docker through `docker login --password-stdin`.
 #
-# Exit codes: 0 ok; 1 uncommitted changes; 2 usage; 3 submodule sources missing;
-# 4 pushed but no digest for IMAGE_REPO; anything else is docker's own exit code.
-# The last lines on stdout are IMAGE=..., DIGEST=... (push only) and PARAMS_SHA256=...;
+# Exit codes: 0 ok; 1 uncommitted changes; 2 usage; 4 pushed but no digest for
+# IMAGE_REPO; anything else is docker's own exit code.
+# The last lines on stdout are IMAGE=... and DIGEST=... (push only);
 # docker's own output goes to stderr.
 set -euo pipefail
 
 IMAGE_REPO=${IMAGE_REPO:-ccr.ccs.tencentyun.com/radeon/refina}
 BASE_IMAGE=${BASE_IMAGE:-docker.io/rocm/pytorch@sha256:4449f856653602317e4101a76fce599c7fcd58ccec2e539951fce5f73083179e}
-ENGINES=${ENGINES:-swift,trl,easydistill,yolo,ultralytics}
+ENGINES=${ENGINES:-swift,trl,easydistill}
 PIP_INDEX_URL=${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple}
 CCR_USERNAME=${CCR_USERNAME:-100053684421}
 
@@ -36,26 +36,14 @@ done
 
 cd "$(dirname "$0")/.."
 
-if [ -n "$(git status --porcelain --ignore-submodules=none)" ]; then
+if [ -n "$(git status --porcelain)" ]; then
     echo "build-image: uncommitted changes or untracked files; commit or remove them first:" >&2
-    git status --short --ignore-submodules=none >&2
+    git status --short >&2
     exit 1
 fi
-if git submodule status | grep -q '^[-+U]'; then
-    echo "build-image: submodules are not at their recorded commits:" >&2
-    git submodule status >&2
-    exit 3
-fi
-for name in trl easydistill; do
-    if [ ! -f "third_party/$name/pyproject.toml" ]; then
-        echo "build-image: third_party/$name is not checked out (git submodule update --init)" >&2
-        exit 3
-    fi
-done
 
 sha=$(git rev-parse HEAD)
 tag="$(git rev-parse --short=12 HEAD)-gfx1100"
-params=$(sha256sum src/refina/params.py | cut -d' ' -f1)
 image="$IMAGE_REPO:$tag"
 
 docker build -f docker/Dockerfile \
@@ -64,7 +52,6 @@ docker build -f docker/Dockerfile \
     --build-arg "PIP_INDEX_URL=$PIP_INDEX_URL" \
     --build-arg "VCS_REF=$sha" \
     --build-arg "IMAGE_VERSION=$tag" \
-    --build-arg "PARAMS_SHA256=$params" \
     -t "$image" . >&2
 
 digest=
@@ -89,4 +76,3 @@ echo "IMAGE=$image"
 if [ -n "$digest" ]; then
     echo "DIGEST=$digest"
 fi
-echo "PARAMS_SHA256=$params"

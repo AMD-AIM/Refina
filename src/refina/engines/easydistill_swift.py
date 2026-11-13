@@ -12,13 +12,17 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from ..context import RunContext
 from ..dataset import DatasetSpec, ResolvedDataset
 from ..errors import CancelledError
 from ..utils import is_nonempty_file, read_jsonl
 from .base import Engine, RunResult
+from .easydistill import DEFAULT_CONFIG as EASYDISTILL_DEFAULTS
 from .easydistill import EasyDistillEngine
+from .spec import EngineSpec
+from .swift import DEFAULT_CONFIG as SWIFT_DEFAULTS
 from .swift import SwiftEngine
 
 logger = logging.getLogger(__name__)
@@ -85,3 +89,26 @@ class EasyDistillSwiftEngine(Engine):
             output=output or (ctx.output_dir / CHECKPOINT_DIRNAME),
             config={"swift": ctx.section("swift"), "dataset": str(sft_path)},
         )
+
+
+DEFAULT_CONFIG: dict[str, Any] = {
+    "easydistill": {
+        **EASYDISTILL_DEFAULTS,
+        "generation": {**EASYDISTILL_DEFAULTS["generation"], "max_tokens": 1024},
+    },
+    **SWIFT_DEFAULTS,
+}
+
+SPEC = EngineSpec(
+    name="easydistill-swift",
+    factory="refina.engines.easydistill_swift:EasyDistillSwiftEngine",
+    framework="EasyDistill + ms-swift",
+    mode="black-box generation followed by student SFT",
+    input="seed prompts + teacher API + local or Hub student weights",
+    defaults=DEFAULT_CONFIG,
+    # Generation runs in the EasyDistill environment and launches Swift through
+    # the executable exported by runtime_env.
+    env="easydistill",
+    dataset_purpose="seed",
+    optional=True,
+)

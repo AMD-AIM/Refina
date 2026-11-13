@@ -23,8 +23,8 @@ def test_dockerfile_pins_the_base_by_digest(dockerfile):
     assert "FROM ${BASE_IMAGE}" in lines
 
 
-def test_dockerfile_installs_all_five_engines(dockerfile):
-    assert "ARG ENGINES=swift,trl,easydistill,yolo,ultralytics" in dockerfile.splitlines()
+def test_dockerfile_installs_every_engine_environment(dockerfile):
+    assert "ARG ENGINES=swift,trl,easydistill" in dockerfile.splitlines()
 
 
 def test_dockerfile_does_not_bake_host_specific_env(dockerfile):
@@ -62,22 +62,18 @@ def test_dockerfile_runtime_contract(dockerfile):
 def test_per_commit_args_come_after_every_run(dockerfile):
     lines = dockerfile.splitlines()
     last_run = max(i for i, line in enumerate(lines) if line.startswith("RUN "))
-    for name in ("VCS_REF", "IMAGE_VERSION", "PARAMS_SHA256"):
+    for name in ("VCS_REF", "IMAGE_VERSION"):
         declared = [i for i, line in enumerate(lines) if line.startswith(f"ARG {name}")]
         assert declared
         assert min(declared) > last_run
 
 
-def test_dockerfile_bundles_the_ultralytics_font(dockerfile):
-    lines = dockerfile.splitlines()
-    assert re.search(r"^ARG ARIAL_SHA256=[0-9a-f]{64}$", dockerfile, re.M)
-    assert "REFINA_FONTS_DIR=/usr/local/share/refina/fonts" in dockerfile
-    fetch = next(i for i, line in enumerate(lines) if "ARIAL_SHA256}" in line)
-    assert fetch < lines.index("COPY . /opt/refina")
-
-
-def test_dockerignore_keeps_submodule_sources():
+def test_dockerignore_excludes_local_state():
     lines = (REPO / ".dockerignore").read_text(encoding="utf-8").splitlines()
     for pattern in ("**/.git", ".venv", ".venvs", ".distill", "build", "work", "output"):
         assert pattern in lines
-    assert not [line for line in lines if line.startswith("third_party")]
+
+
+def test_repo_has_no_submodules():
+    assert not (REPO / ".gitmodules").exists()
+    assert not (REPO / "third_party").exists()

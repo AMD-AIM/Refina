@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -57,7 +58,7 @@ def test_explicit_cli_process_count_takes_precedence(monkeypatch: pytest.MonkeyP
     ],
 )
 def test_trl_cli_relaunches_itself_under_accelerate(
-    monkeypatch: pytest.MonkeyPatch, strategy: str, config_name: str
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, strategy: str, config_name: str
 ):
     monkeypatch.delenv("WORLD_SIZE", raising=False)
     monkeypatch.delenv("LOCAL_RANK", raising=False)
@@ -74,6 +75,7 @@ def test_trl_cli_relaunches_itself_under_accelerate(
         params=SimpleNamespace(origin=lambda _key: None),
         param=lambda key, default=None: values.get(key, default),
     )
+    monkeypatch.setattr(launcher.sys, "executable", str(tmp_path / "bin" / "python"))
     monkeypatch.setattr(launcher.shutil, "which", lambda _name: "/usr/bin/accelerate")
     monkeypatch.setattr(launcher, "stream_command", lambda argv: captured.extend(argv) or 0)
 

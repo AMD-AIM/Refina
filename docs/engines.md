@@ -4,7 +4,7 @@ Each engine owns one framework call. Production runs can be configured entirely
 with first-level CLI flags; `--config`, `--config-json`, and `--set` remain
 available for advanced framework fields.
 
-See [`cli-parameters.md`](cli-parameters.md) for all 80 parameters, defaults, and
+See [`cli-parameters.md`](cli-parameters.md) for all 64 parameters, defaults, and
 the engine compatibility matrix. An engine rejects parameters that belong to a
 different one instead of ignoring them.
 
@@ -238,217 +238,9 @@ half-written adapter.
 
 ---
 
-## `yolo` — object detection training
-
-A built-in PyTorch implementation of YOLOv5u, YOLOv8, YOLO11 and YOLO26 (scales
-`n s m l x`) in `src/refina/yolo/`. It needs torch, torchvision, OpenCV and
-safetensors, and does not use the Ultralytics package. YOLO26 trains its
-end-to-end one-to-one head next to the one-to-many head, and inference takes the
-top-k without NMS.
-
-```bash
-refina --engine yolo --model yolo26n.pt --data https://example.com/coco8.zip \
-  --epochs 100 --imgsz 640 --batch -1 --device 0 --output /output/yolo26n-exp
-```
-
-**`--model`**
-
-| value | meaning |
-|---|---|
-| `yolo26n`, `yolo11s`, `yolov8m`, `yolov5lu` | architecture, random init (`--pretrained` loads official weights) |
-| `yolo26n.pt` | official weights, downloaded once to `<model-cache-dir>/yolo` (`YOLO_WEIGHTS_URL` sets a mirror) |
-| `/path/w.pt` | an official checkpoint or one written by this engine |
-| `/path/run-dir` | an earlier `--output` (`config.json` + `best.safetensors`) |
-| `http(s)://…/w.pt`, `hf://org/repo/w.pt`, `ms://org/repo/w.pt` | downloaded weights |
-
-Official `.pt` files are read with a restricted unpickler: `ultralytics.*`
-classes become inert placeholders and only tensors are kept. If the dataset has
-a different class count, the class-dependent head layers are reinitialised.
-
-**`--data`**: a local path, `http(s)://`, `hf://` or `ms://`. The value can be a
-directory, a `data.yaml` or a zip/tar archive, which is unpacked once next to the
-cached download. The following layouts are detected:
-
-- a YOLO txt `data.yaml` (`path`, `train`, `val`, `names`), or `images/<split>` with
-  `labels/<split>`. Names come from `classes.txt`, or default to COCO-80 when the
-  directory name starts with `coco`.
-- COCO json: `annotations/instances_<split>.json` next to `images/<split>`, or
-  `data.yaml` split entries that point at `.json` files.
-- Ultralytics Platform NDJSON (`*.ndjson`, for example a signed export URL). The
-  first line holds `task` and `class_names`; each further line holds one image's
-  `file`, `split`, `url` and `annotations.boxes` (`[cls, cx, cy, w, h]`). Images are
-  downloaded with 32 threads into `<dataset-cache-dir>/ndjson/<name>-<hash>/`.
-  The hash ignores URL query strings, so a re-signed export of the same data reuses
-  the earlier download. Without a `val` split, a seeded 10% of `train` becomes
-  `val`, as on the Platform. Only `task: detect` is accepted. If any image fails to
-  download, the run fails with exit code 5.
-
-If there is no `val` split, the engine validates on the training images. Set
-`yolo.val_fraction` to hold out a fraction of them instead.
-
-**Flags**: `--epochs`, `--imgsz`, `--batch` (`-1` sizes the batch to about 60% of
-GPU memory), `--workers`, `--pretrained`, `--amp`/`--no-amp`, `--optimizer`
-(`auto`, `SGD`, `Adam`, `AdamW`), `--close-mosaic`, `--learning-rate`,
-`--max-steps` (stops after N batches, useful for smoke tests), `--logging-steps`,
-`--resume` and `--device`. The engine sets `MIOPEN_FIND_MODE=FAST` unless it
-is already set (only ROCm reads it): MIOpen's default mode spends about 30 s
-tuning each new convolution shape. Every other hyper-parameter (loss gains, warmup,
-augmentation) is under `yolo.*`; see `refina --engine yolo
---show-default-config`.
-
-**Outputs** (`--output`): `weights/last.pt` holds the resumable state;
-`weights/best.pt` holds the EMA weights with the best fitness
-(`0.1·mAP50 + 0.9·mAP50-95`). The run also writes `best.safetensors` and
-`config.json` for reloading, and `summary.json` (final metrics, `best_epoch`,
-peak memory).
-
-Training curves are written once per epoch:
-
-- `results.csv` uses the Ultralytics column names (`epoch`, `time`,
-  `train/{box,cls,dfl}_loss`, `metrics/{precision,recall,mAP50,mAP50-95}(B)`,
-  `val/{box,cls,dfl}_loss`, `lr/pg0..2`), so the Ultralytics Platform and its
-  plotting tools read it unchanged. A cell is empty when an epoch was not
-  validated.
-- `metrics.jsonl` holds the same values as one JSON object per epoch, plus
-  `step`, `fitness`, `best_epoch` and `total_epochs`. Read it to follow a run
-  while it trains.
-- `results.png` plots the ten loss and metric curves when matplotlib is
-  installed.
-
-`--resume` drops the rows it is about to train again. Ctrl-C stops at the next
-batch, still writes all of these files, and exits with code 130.
-
----
-
-## `ultralytics` — object detection through the Ultralytics package
-
-Calls `ultralytics.YOLO(...).train()` and reports to Ultralytics Platform with
-the package's own Platform callback. Install it with
-`scripts/setup_envs.py --engines ultralytics`
-(`requirements/rocm714-ultralytics.txt`). Ultralytics is AGPL-3.0.
-
-```bash
-export REPORT_TO_TOKEN=...            # never pass the token as a flag
-refina --engine ultralytics --model yolo26n.pt \
-  --data "$SIGNED_NDJSON_URL" --dataset-sha256 sha256:3f5c... \
-  --train-args 'epochs=100 imgsz=640 batch=-1 patience=20 mixup=0.1' \
-  --report-to-url https://platform.example.com \
-  --report-to-model acme-vision/warehouse/exp-1 --report-to-model-id m-123 \
-  --dataset-slug acme-vision/warehouse --dataset-version 3 \
-  --output /output/exp-1
-```
-
-**`--model`**: `yolo26n.pt` (downloaded once to `<model-cache-dir>/yolo`), a local
-or `http(s)://`/`hf://`/`ms://` `.pt`, a `*.yaml` architecture, or `ul://…`.
-`--model-sha256` checks the weights file (not possible for `*.yaml` or `ul://`).
-
-**`--data`**: an Ultralytics NDJSON export (`*.ndjson`, usually a signed URL), a
-`data.yaml`, or a directory. NDJSON is converted with Ultralytics'
-`convert_ndjson_to_yolo` into `<dataset-cache-dir>/ultralytics/` before training.
-
-**`--train-args`** (env `ULTRALYTICS_TRAIN_ARGS`): a JSON object, or
-Ultralytics' own `key=value` form. Keys are sorted into three groups before
-anything is downloaded:
-
-| group | keys | handling |
-|---|---|---|
-| accepted | `epochs imgsz batch lr0 lrf optimizer momentum weight_decay warmup_epochs cos_lr patience seed workers freeze dropout rect multi_scale single_cls fraction close_mosaic val save_period amp` | passed to `train()` |
-| accepted (augmentation) | `hsv_h hsv_s hsv_v degrees translate scale shear perspective flipud fliplr bgr mosaic mixup cutmix copy_paste copy_paste_mode auto_augment erasing` | passed to `train()` |
-| ignored | `device project name save_dir data model resume`, and any value that looks like a local path | dropped with a warning and an `ignored_args` event |
-| rejected | everything else | exit 3, listing every bad key |
-
-Ranges: `epochs` 1–1000, `batch` -1, a fraction in (0, 1) or 1–256, `imgsz`
-32–4096, `workers` 0–64, `fraction` in (0, 1]. Types are then checked against
-the installed Ultralytics with `get_cfg`. `dropout` is accepted, but it only
-affects classification heads. The first-level `--epochs`, `--imgsz`, `--batch`,
-`--workers`, `--amp`, `--optimizer`, `--close-mosaic` and `--learning-rate`
-(`lr0`) override the same keys in `--train-args`.
-
-**Reporting** is on when `--report-to-url` (`report_to.api_base_url`) is set. The
-token is read from the variable named by `report_to.token_env`
-(`REPORT_TO_TOKEN` by default) and never logged.
-`--report-to-model owner/project/model` names the model.
-`--report-to-protocol` (`report_to.protocol`) picks one of two ways to report.
-
-*`webhook`* (default) hands the token to Ultralytics as `ULTRALYTICS_API_KEY`
-and uses its Platform callback (`/api/webhooks/training/metrics`,
-`/api/webhooks/models/upload`). With `--report-to-model-id` the events go to
-that existing model instead of creating one. The callback sends `training_started`,
-`epoch_end` with all metrics every `--report-to-metrics-every-epochs`
-(`report_to.metrics_every_epochs`, 1) epochs plus once more for the final
-validation, console output, an intermediate checkpoint (`best.pt`, else `last.pt`)
-every `--report-to-checkpoint-every-epochs` (`report_to.checkpoint_every_epochs`,
-10; 0 turns it off) epochs except the last one, the final `best.pt`, and
-`training_complete`. The engine swaps in these cadence gates for the callback's
-own `on_fit_epoch_end` / `on_model_save`, so the callback's 15-minute checkpoint
-limit does not apply. Platform-side cancellation rides on the `epoch_end`
-response, so with N > 1 it only takes effect on an epoch that reports. The
-engine adds:
-
-- a `training_progress` heartbeat every `report_to.heartbeat_seconds` (600; 0
-  turns it off),
-- `training_failed` with the error code when training raises,
-- exit code 10 when training finished but the platform did not take the run, the
-  weights upload, or `training_complete`. Local outputs are kept,
-- on SIGTERM / Ctrl-C, `PATCH /api/models/{owner}/{project}/{model}` with
-  `status: cancelled` as soon as the signal arrives (model path from the callback's
-  `modelUrl`; at most 2 tries of 10 s), before the final upload, which may not finish
-  inside the Pod's grace period. The run then uploads what it has and exits 130
-  (`Cancelled`),
-- exit code 130 with code `PlatformCancelled` when the platform stopped the run
-  (`cancelled: true` in a webhook response, logged as `Platform: Training cancelled
-  from Platform`). The weights so far are still uploaded.
-
-Webhook calls use the SDK's retry with backoff; the SDK does not read
-`Retry-After`.
-
-*`rest`* uses the public API instead (design doc §8.2 / §8.3) and needs
-`--report-to-model-id`, which is the upload `assetId`:
-
-| when | calls |
-|---|---|
-| training starts | `PATCH /api/models/{owner}/{project}/{model}` with `status: running`; 400/401/403/404/409 stops the run with exit 10 before the first epoch |
-| every `--report-to-metrics-every-epochs` (`report_to.metrics_every_epochs`, 1) | `PATCH` with `trainResults` (every reported epoch so far, each `{epoch, fitness, metrics: {mAP50, mAP50-95, precision, recall}, system: {}, timestamp}`), `epochs`, `bestEpoch`, `bestFitness`, `datasetSlug`, `metadata`; the PATCH body has no `metrics` field |
-| every `--report-to-checkpoint-every-epochs` (`report_to.checkpoint_every_epochs`, 10; 0 turns it off), except the last epoch | upload a copy of `last.pt` as `last.pt` |
-| every `report_to.heartbeat_seconds` | `PATCH` with `status` and `metadata` only |
-| training ends | upload `best.pt`, then `PATCH` with `status: completed` (or `cancelled`) and the same `trainResults` array, plus the last epoch if it was not reported |
-| training raises | `PATCH` with `status: failed` and `trainingError: {message (≤1000), code (≤50), timestamp}` |
-
-An upload is `POST /api/upload/signed-url` (`assetType: models`, `assetId`,
-`filename`, `contentType`, `totalBytes`), then `PUT uploadUrl` with every
-returned header and no `Authorization`, then `POST /api/upload/complete`. A 412
-on the PUT starts again from the signed URL, up to three times. Every call
-retries 429 after `Retry-After` (or `X-RateLimit-Reset`), and 5xx and network
-errors with exponential backoff, up to `report_to.rest.max_attempts` (5) times;
-other 4xx fail at once. Intermediate reports run on a background thread and
-only log a warning when they fail. A failed final upload or final `PATCH` exits
-10. `PATCH` never sends `name` or `projectId`.
-
-The fields that are not settled yet are configurable under `report_to`:
-`rest.paths`, `rest.statuses` (`running`, `completed`, `failed`, `cancelled`),
-`rest.train_results_field` (empty string drops it), `rest.upload_md5` (lowercase hex
-MD5 on `complete`), and `metadata` (merged into every `PATCH`, for example
-`--set report_to.metadata.session_id=sess_7f3a`).
-
-`save_period` only controls local checkpoints. Ultralytics telemetry, hub sync
-and other loggers are turned off, and `YOLO_AUTOINSTALL=False`.
-
-**Expired dataset URLs**: with `--dataset-slug owner/dataset` (and optionally
-`--dataset-version N`), a 400/401/403 on the NDJSON download calls
-`GET /api/datasets/{owner}/{dataset}/export?v=N` (`rest.paths.dataset_export`)
-for a fresh link and retries, at most twice, in either protocol. Image URLs inside the NDJSON are not re-signed. URLs are logged
-without their query string.
-
-**Outputs** (`--output`): Ultralytics' usual run directory (`weights/best.pt`,
-`weights/last.pt`, `results.csv`, `args.yaml`, plots) plus `summary.json`
-(`epochs_completed`, `best_epoch`, `best_fitness`, final `metrics`, `cancelled`,
-platform `model_id`/`run_id`). `--resume` continues from `weights/last.pt`.
-
----
-
 ## Integrity checks
 
-`--dataset-sha256` and `--model-sha256` take `sha256:<hex>` or bare hex. A local
+`--dataset-sha256` takes `sha256:<hex>` or bare hex. A local
 file is hashed in place. A downloaded file is hashed after download; on a
 mismatch the cache entry is deleted (a cached file is fetched once more first),
 and the run exits with code 5 and `IntegrityCheckFailed`.
@@ -469,13 +261,11 @@ Take everything after `REFINA_EVENT ` as one JSON object.
 
 | `event` | fields | when |
 |---|---|---|
-| `stage` | `stage`: `downloading`, `converting`, `training`, `uploading` | once when each stage starts; `converting` and `uploading` only where the engine has them |
-| `progress` | `epoch` (1-based), `total_epochs`, `eta_seconds`, optional `fitness` | after each epoch (`yolo`, `ultralytics`) |
-| `ignored_args` | `args` | `ultralytics` dropped some `train_args` |
+| `stage` | `stage`: `downloading`, `training` | once when each stage starts |
 | `exit` | `exit_code`, `code`, `stage` (the stage that was running, or `null`) | last line, once the arguments and config files have been merged; errors before that print only an `ERROR` line |
 
 All events carry `time` (UTC, ISO 8601). `code` is the error code (for example
-`IntegrityCheckFailed`, `ReportFailed`), or `null` on success.
+`IntegrityCheckFailed`), or `null` on success.
 
 ---
 
@@ -489,3 +279,42 @@ steps: 3
 step_delay_sec: 0
 fail_at_step: 2    # optional, for testing the failure path
 ```
+
+---
+
+## Adding an engine
+
+Engines are plugins found through the `refina.engines` entry point group. The
+built-in ones are registered in Refina's own `pyproject.toml`; a third-party
+package registers its engine the same way:
+
+```toml
+[project.entry-points."refina.engines"]
+my-engine = "my_package.engine:SPEC"
+```
+
+The entry point resolves to an `EngineSpec` (`refina.engines.spec`), the only
+place an engine's metadata lives:
+
+| Field | Meaning |
+|-------|---------|
+| `name` | CLI name; must equal the entry point name |
+| `factory` | `"module:Class"` of the `Engine` subclass, imported only when the engine runs |
+| `framework`, `mode`, `input` | What `refina --engines` prints |
+| `defaults` | Config printed by `--show-default-config` and merged under user config |
+| `env` | Name of the isolated venv under `REFINA_ENVS_ROOT` the run re-executes in |
+| `doctor` | `DoctorCheck(module, package, executable)` for `refina doctor` |
+| `dataset_purpose` | How resolved datasets are validated: `seed`, `sft` or `prompt` |
+| `optional` | Listed as `optional` instead of `core` |
+| `internal` | Test-only engine such as `noop` |
+
+Define `SPEC` at module top level and import the framework only inside
+functions, so listing engines never imports torch. A spec that fails to import
+shows up in `refina --engines` with `plugin: error` and does not hide the other
+engines. Entry points exist only once the package is installed, so run
+`pip install -e .` again after adding one.
+
+Command-line flags are still declared centrally in `src/refina/params.py`; a
+new engine has to be added to `ENGINES` there before `--engine` accepts it.
+Until then `--engine my-engine` exits 2 and says the plugin's flags are not
+defined yet.

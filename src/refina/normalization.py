@@ -133,7 +133,7 @@ def _extension_format(path: Path) -> str | None:
     suffix = path.suffix.lower().lstrip(".")
     if suffix in _FORMATS:
         return suffix
-    return "jsonl" if suffix in {"ndjson", "jsonlines"} else None
+    return "jsonl" if suffix == "jsonlines" else None
 
 
 def _rows(files: list[Path], format_name: str, split: str) -> Iterator[dict[str, Any]]:

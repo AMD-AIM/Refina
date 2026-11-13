@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import subprocess
 import sys
@@ -80,3 +81,15 @@ def test_base_constraints_pins_the_torch_family(setup_envs, tmp_path, monkeypatc
     assert path.read_text(encoding="utf-8").splitlines() == [
         f"{name}=={value}" for name, value in versions.items()
     ]
+
+
+@pytest.mark.parametrize("name", ["trl", "easydistill"])
+def test_engine_installs_use_version_specifiers(setup_envs, monkeypatch, tmp_path, name):
+    commands: list[list[str]] = []
+    monkeypatch.setattr(setup_envs, "run", lambda command, **_: commands.append(command))
+    args = argparse.Namespace(profile="rocm714", offline=False, index_url=None)
+    setup_envs.install_engine(name, tmp_path / "python", args, tmp_path / "constraints.txt")
+    values = [value for command in commands for value in command]
+    assert f".[{name}]" in values
+    assert str(REPO / "requirements" / f"rocm714-{name}.txt") in values
+    assert not [value for value in values if "third_party" in value]

@@ -1,6 +1,6 @@
 # CLI 参数分层与兼容矩阵
 
-`refina` 目前提供 80 个一级参数（另有 `--models`、`--datasets`、`--engines`
+`refina` 目前提供 64 个一级参数（另有 `--models`、`--datasets`、`--engines`
 三个目录查询参数）。参数不是所有引擎通用：解析后会根据
 `--engine` 校验，不属于当前引擎的参数会直接报错，不会被静默忽略。
 
@@ -118,57 +118,6 @@ TRL 同时接受教师生成参数表中的 `--temperature`。
 | `--accelerate-config` | path | 无 | — | — | ✓ | — | 自定义 Accelerate 配置，覆盖 strategy |
 | `--main-process-port` | int | `29500` | — | ✓ | ✓ | ✓ | 分布式 rendezvous 端口 |
 | `--device` | int | `0` | — | ✓ | ✓ | ✓ | 单进程使用的逻辑 GPU |
-
-## YOLO 检测训练参数（9）
-
-`--engine yolo` 不在上面的矩阵里。它接受全局运行参数（`--model-revision` 除外，
-数据集的 format、subset、split 和抽样参数会被忽略），以及 `--student`/`--model`、
-`--dataset`/`--data`、`--resume`、`--device`、`--model-cache-dir`、`--max-steps`、
-`--learning-rate` 和 `--logging-steps`。后三个分别映射到 `yolo.max_steps`、
-`yolo.lr0` 和 `yolo.log_interval`。专属参数如下：
-
-| 参数 | 类型 | 默认值 | 环境变量 | 说明 |
-| --- | --- | --- | --- | --- |
-| `--epochs` | int | `100` | `YOLO_EPOCHS` | 训练轮数 |
-| `--imgsz` | int | `640` | `YOLO_IMGSZ` | 训练与验证的输入尺寸（32 的倍数） |
-| `--batch` | int | `16` | `YOLO_BATCH` | 批量；`-1` 按约 60% 显存自动估算 |
-| `--workers` | int | `8` | `YOLO_WORKERS` | DataLoader 进程数 |
-| `--pretrained` / `--no-pretrained` | bool | false | `YOLO_PRETRAINED` | 名称型模型加载官方权重；`.pt` 结尾的名称自动为 true |
-| `--amp` / `--no-amp` | bool | true | `YOLO_AMP` | 混合精度（前向 fp16，损失 fp32） |
-| `--optimizer` | string | `auto` | `YOLO_OPTIMIZER` | `auto`、`SGD`、`Adam` 或 `AdamW` |
-| `--close-mosaic` | int | `10` | `YOLO_CLOSE_MOSAIC` | 最后 N 个 epoch 关闭 mosaic |
-| `--model-sha256` | string | 无 | `STUDENT_MODEL_SHA256` | 权重文件的 `sha256:<hex>`；不匹配时退出码 5 |
-
-```bash
-refina --engine yolo --model yolo26n.pt --data /data/coco8 \
-  --epochs 100 --imgsz 640 --batch -1 --device 0 --output /output/yolo26n
-```
-
-模型与数据的取值方式见 [`engines.md`](engines.md#yolo--object-detection-training)。
-
-## Ultralytics 引擎与平台上报参数（7）
-
-`--engine ultralytics` 接受全局运行参数、`--student`/`--model`、`--dataset`/`--data`、
-`--resume`、`--device`、`--learning-rate`（映射到 `lr0`），以及上表中除
-`--pretrained` 外的 YOLO 参数（映射到 `train_args` 的同名键）。专属参数如下：
-
-| 参数 | 类型 | 默认值 | 环境变量 | 说明 |
-| --- | --- | --- | --- | --- |
-| `--train-args` | JSON 或 `key=value` | `{}` | `ULTRALYTICS_TRAIN_ARGS` | Ultralytics `train()` 参数，按白名单过滤；一级参数优先 |
-| `--report-to-url` | URL | 无 | `REPORT_TO_API_BASE_URL` | 平台地址；设置后开启上报，token 从 `REPORT_TO_TOKEN` 读取 |
-| `--report-to-model` | `owner/project/model` | 无 | `REPORT_TO_MODEL` | 上报时的项目与模型名 |
-| `--report-to-model-id` | string | 无 | `REPORT_TO_MODEL_ID` | 绑定到平台上已存在的模型；`rest` 模式下即上传用的 `assetId`，必填 |
-| `--report-to-protocol` | string | `webhook` | `REPORT_TO_PROTOCOL` | `webhook`：Ultralytics 自带回调；`rest`：公开 REST（上传 + `PATCH /api/models/...`） |
-| `--report-to-metrics-every-epochs` | int | `1` | `REPORT_TO_METRICS_EVERY_EPOCHS` | 每 N 轮上报一次指标（`report_to.metrics_every_epochs`，≥1），两种上报方式都生效；训练结束时的最终指标照常上报 |
-| `--report-to-checkpoint-every-epochs` | int | `10` | `REPORT_TO_CHECKPOINT_EVERY_EPOCHS` | 每 N 轮上传一次中间 checkpoint（`report_to.checkpoint_every_epochs`，≥0，0 表示不传），两种上报方式都生效；最后一轮不传，交给最终上传 |
-| `--dataset-slug` | `owner/dataset`，最长 100 个字符 | 无 | `DATASET_SLUG` | 签名 URL 过期时用它重新获取导出链接；超过 100 个字符以退出码 3 结束 |
-| `--dataset-version` | int | 最新 | `DATASET_VERSION` | 重新获取链接时的数据集版本 |
-
-上报 token 只能通过环境变量传入（变量名可用 `report_to.token_env` 修改），
-不会出现在日志和输出文件里。训练完成但平台没有收到权重或 `training_complete`
-时退出码为 10。上报路径和状态值通过 `report_to.*` 配置（例如
-`--set report_to.metadata.session_id=…`）。白名单、两种上报方式、心跳和事件格式见
-[`engines.md`](engines.md#ultralytics--object-detection-through-the-ultralytics-package)。
 
 ## 配置优先级
 

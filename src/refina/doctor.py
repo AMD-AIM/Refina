@@ -9,15 +9,10 @@ import subprocess
 import sys
 from dataclasses import asdict, dataclass
 
+from .engines import registry
+from .engines.spec import DoctorCheck
+from .errors import ExitCode, UsageError
 from .runtime_env import environments_root, project_root
-
-_ENGINES = {
-    "swift": ("swift", "ms-swift", "swift"),
-    "trl": ("trl", "trl", "accelerate"),
-    "easydistill": ("easydistill", "easydistill", None),
-    "yolo": ("cv2", "opencv-python-headless", None),
-    "ultralytics": ("ultralytics", "ultralytics", None),
-}
 
 
 @dataclass
@@ -34,16 +29,20 @@ def _package_version(name: str) -> str:
         return "missing"
 
 
-def _engine_check(name: str, module: str, package: str, executable: str | None) -> Check:
+def _checked_engines() -> tuple[str, ...]:
+    return tuple(name for name in registry.available() if registry.spec(name).doctor)
+
+
+def _engine_check(name: str, check: DoctorCheck) -> Check:
     python = environments_root() / name / "bin" / "python"
     if not python.is_file():
         return Check(name, False, f"environment missing: {python}")
-    if executable and not (python.parent / executable).is_file():
-        return Check(name, False, f"executable missing: {python.parent / executable}")
+    if check.executable and not (python.parent / check.executable).is_file():
+        return Check(name, False, f"executable missing: {python.parent / check.executable}")
     code = (
         "import importlib.metadata as m, importlib.util as u;"
-        f"assert u.find_spec({module!r}) is not None;"
-        f"print(m.version({package!r}))"
+        f"assert u.find_spec({check.module!r}) is not None;"
+        f"print(m.version({check.package!r}))"
     )
     try:
         result = subprocess.run(  # noqa: S603
@@ -64,19 +63,19 @@ def collect(selected: list[str] | None = None) -> list[Check]:
         Check("core", True, f"refina {_package_version('refina')} ({sys.executable})"),
         Check("project", (root / "pyproject.toml").is_file(), str(root)),
     ]
-    for name in selected or list(_ENGINES):
-        module, package, executable = _ENGINES[name]
-        checks.append(_engine_check(name, module, package, executable))
-
-    for name in ("trl", "easydistill"):
-        path = root / "third_party" / name
-        checks.append(Check(f"submodule:{name}", path.is_dir() and any(path.iterdir()), str(path)))
+    for name in selected or _checked_engines():
+        checks.append(_engine_check(name, registry.spec(name).doctor))
     return checks
 
 
 def main(argv: list[str] | None = None) -> int:
+    try:
+        engines = _checked_engines()
+    except UsageError as exc:
+        print(f"refina doctor: {exc.message}", file=sys.stderr)
+        return int(ExitCode.USAGE)
     parser = argparse.ArgumentParser(prog="refina doctor")
-    parser.add_argument("--engine", action="append", choices=tuple(_ENGINES))
+    parser.add_argument("--engine", action="append", choices=engines)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     checks = collect(args.engine)

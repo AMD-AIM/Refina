@@ -20,6 +20,7 @@ from ..dataset import DatasetSpec
 from ..errors import ConfigError, EngineError, classify
 from ..utils import is_nonempty_file, read_jsonl, require_any_key, stream_command
 from .base import Engine, RunResult, make_spec, specs_from_params
+from .spec import DoctorCheck, EngineSpec
 
 logger = logging.getLogger(__name__)
 
@@ -142,3 +143,34 @@ class EasyDistillEngine(Engine):
     def _teacher_field(ctx: RunContext, config_key: str, dest: str) -> str | None:
         value = ctx.param(dest) or ctx.section("backend").get(config_key)
         return str(value) if value else None
+
+
+DEFAULT_CONFIG: dict[str, Any] = {
+    "job_type": DEFAULT_JOB_TYPE,
+    "backend": {"type": "openai"},
+    "generation": {
+        "system_prompt": "You are a helpful assistant.",
+        "temperature": 0.7,
+        "max_tokens": 512,
+        "max_workers": 4,
+        "show_progress": True,
+    },
+    "dataset": {
+        "instruction_key": "instruction",
+        "skip_empty": True,
+        "min_length": 10,
+    },
+}
+
+SPEC = EngineSpec(
+    name="easydistill",
+    factory="refina.engines.easydistill:EasyDistillEngine",
+    framework="EasyDistill",
+    mode="black-box generation",
+    input="seed prompts + OpenAI-compatible teacher API",
+    defaults=DEFAULT_CONFIG,
+    env="easydistill",
+    doctor=DoctorCheck("easydistill", "easydistill", None),
+    dataset_purpose="seed",
+    optional=True,
+)

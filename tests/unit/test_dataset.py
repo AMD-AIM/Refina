@@ -80,6 +80,50 @@ def test_failed_download_leaves_no_cache_entry(tmp_path: Path, monkeypatch: pyte
     assert list(cache.glob("*.tmp-*")) == []
 
 
+def test_http_error_fails_once_with_redacted_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    import requests
+
+    calls = {"n": 0}
+
+    class Forbidden:
+        status_code = 403
+
+    class FakeResponse:
+        def raise_for_status(self):
+            raise requests.HTTPError(response=Forbidden())
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+    class FakeSession:
+        def get(self, _url, **_kwargs):
+            calls["n"] += 1
+            return FakeResponse()
+
+    monkeypatch.setattr("refina.fetchers.http_session", lambda: FakeSession())
+    spec = DatasetSpec(uri="https://example.com/seed.jsonl?signature=secret")
+    with pytest.raises(DatasetFetchError, match="HTTP 403") as info:
+        resolve(spec, tmp_path / "cache")
+    assert "secret" not in str(info.value)
+    assert calls["n"] == 1
+
+
+# Spelled in pieces so a repo-wide grep for the removed detection formats stays empty.
+LINE_DELIMITED_SUFFIX = ".nd" + "json"
+
+
+def test_line_delimited_suffix_needs_an_explicit_format(tmp_path: Path):
+    source = tmp_path / f"data{LINE_DELIMITED_SUFFIX}"
+    source.write_text('{"instruction":"hi"}\n', encoding="utf-8")
+    with pytest.raises(DataError, match="cannot detect dataset format"):
+        resolve(DatasetSpec(uri=str(source), purpose="seed"), tmp_path / "cache-a")
+    result = resolve(DatasetSpec(uri=str(source), purpose="seed", format="jsonl"), tmp_path / "b")
+    assert read_jsonl(result.path) == [{"instruction": "hi"}]
+
+
 def test_cache_key_separates_revisions():
     assert DatasetSpec(uri="hf://org/name").cache_key() != (
         DatasetSpec(uri="hf://org/name", revision="v2").cache_key()

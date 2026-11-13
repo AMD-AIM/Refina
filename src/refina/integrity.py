@@ -1,7 +1,6 @@
-"""Digest checks for downloaded datasets and weights.
+"""Digest checks for downloaded datasets.
 
-A digest is ``sha256:<hex>`` (the Platform's ``content_hash``) or a bare 64-digit
-hex string (``base_model.sha256``).
+A digest is ``sha256:<hex>`` or a bare 64-digit hex string.
 """
 
 from __future__ import annotations
@@ -47,7 +46,9 @@ def verify(path: Path, expected: str, what: str) -> None:
     path = Path(path)
     want = parse_digest(expected)
     if not path.is_file():
-        raise IntegrityError(f"{what}: {path} is not a single file, so its sha256 cannot be checked")
+        raise IntegrityError(
+            f"{what}: {path} is not a single file, so its sha256 cannot be checked"
+        )
     got = sha256_file(path)
     if got != want:
         raise IntegrityError(f"{what}: sha256 mismatch for {path.name}: expected {want}, got {got}")

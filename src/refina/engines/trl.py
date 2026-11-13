@@ -10,13 +10,14 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 from .. import preflight
 from ..context import RunContext
 from ..errors import ConfigError, EngineError, classify
 from ..utils import read_jsonl
 from .base import Engine, RunResult, config_dataset, make_spec, specs_from_params
+from .spec import DoctorCheck, EngineSpec
 from .swift import latest_checkpoint
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,17 @@ DEFAULT_ARGS: dict[str, Any] = {
     "report_to": "none",
     "dataloader_num_workers": 0,
 }
+
+# DistillationConfig fields the engine sets itself; tests pin them against the installed TRL.
+ENGINE_CONFIG_FIELDS: Final[frozenset[str]] = frozenset(
+    {
+        "output_dir",
+        "teacher_model_name_or_path",
+        "model_init_kwargs",
+        "teacher_model_init_kwargs",
+        *DEFAULT_ARGS,
+    }
+)
 
 DEFAULT_MODEL_INIT: dict[str, Any] = {
     "torch_dtype": "bfloat16",
@@ -139,7 +151,8 @@ class TrlEngine(Engine):
                 # DistillationTrainer currently calls Accelerator.prepare_model
                 # for the frozen teacher, unlike TRL's DPO/GRPO trainers. That
                 # leaves the second model on CPU under FSDP. Use TRL's dedicated
-                # helper, which also handles an already-wrapped model.
+                # helper, which also handles an already-wrapped model
+                # (huggingface/trl#8253).
                 from trl.models.utils import prepare_fsdp
 
                 trainer.teacher_model = prepare_fsdp(
@@ -272,3 +285,51 @@ def check_model_compatibility(student: Path, teacher: Path) -> None:
         raise ConfigError(
             f"teacher/student vocabulary mismatch: teacher={teacher_vocab}, student={student_vocab}"
         )
+
+
+DEFAULT_CONFIG: dict[str, Any] = {
+    "trl": {
+        "num_train_epochs": 1,
+        "max_steps": 100,
+        "per_device_train_batch_size": 1,
+        "gradient_accumulation_steps": 8,
+        "learning_rate": 1.0e-5,
+        "bf16": True,
+        "gradient_checkpointing": True,
+        "logging_steps": 1,
+        "save_steps": 200,
+        "save_total_limit": 2,
+        "max_completion_length": 256,
+        "temperature": 1.0,
+        "beta": 0.5,
+    },
+    "lora": {
+        "enabled": True,
+        "r": 8,
+        "lora_alpha": 32,
+        "lora_dropout": 0.05,
+        "target_modules": [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ],
+    },
+    "model_init": {"torch_dtype": "bfloat16", "trust_remote_code": True},
+    "teacher_model_init": {"torch_dtype": "bfloat16", "trust_remote_code": True},
+}
+
+SPEC = EngineSpec(
+    name="trl",
+    factory="refina.engines.trl:TrlEngine",
+    framework="TRL DistillationTrainer",
+    mode="white-box logits distillation",
+    input="prompt dataset + local or Hub teacher and student weights",
+    defaults=DEFAULT_CONFIG,
+    env="trl",
+    doctor=DoctorCheck("trl", "trl", "accelerate"),
+    dataset_purpose="prompt",
+)

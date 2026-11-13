@@ -22,6 +22,7 @@ from ..context import RunContext
 from ..errors import ConfigError, EngineError, OutOfMemoryError
 from ..utils import dir_has_entries, stream_command
 from .base import Engine, RunResult, config_dataset, make_spec, specs_from_params
+from .spec import DoctorCheck, EngineSpec
 
 logger = logging.getLogger(__name__)
 
@@ -201,3 +202,35 @@ def config_args(ctx: RunContext) -> dict[str, Any]:
     if not isinstance(section, dict):
         raise ConfigError("config key 'swift' must be a mapping of swift sft arguments")
     return dict(section)
+
+
+DEFAULT_CONFIG: dict[str, Any] = {
+    "swift": {
+        "tuner_type": "lora",
+        "lora_rank": 8,
+        "lora_alpha": 32,
+        "num_train_epochs": 3,
+        "per_device_train_batch_size": 1,
+        "gradient_accumulation_steps": 8,
+        "learning_rate": 1.0e-4,
+        "max_length": 2048,
+        "logging_steps": 5,
+        "save_steps": 200,
+        "save_total_limit": 2,
+        "torch_dtype": "bfloat16",
+        "gradient_checkpointing": True,
+    }
+}
+
+SPEC = EngineSpec(
+    name="swift",
+    factory="refina.engines.swift:SwiftEngine",
+    framework="ms-swift",
+    mode="student SFT",
+    input="SFT dataset + local or Hub student weights",
+    defaults=DEFAULT_CONFIG,
+    env="swift",
+    doctor=DoctorCheck("swift", "ms-swift", "swift"),
+    dataset_purpose="sft",
+    optional=True,
+)

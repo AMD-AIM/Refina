@@ -8,14 +8,14 @@ One command for knowledge distillation, in two flavours:
   learns from the teacher's logits (TRL `DistillationTrainer`), with FSDP2 or
   DeepSpeed ZeRO-3 for multi-GPU runs
 
-The repository is self-contained: the custom TRL and EasyDistill revisions are
-pinned Git submodules under `third_party/`. Heavy engines run in isolated virtual
-environments, while the core CLI and test suite remain usable without Torch.
+TRL and EasyDistill are pinned as versioned extras in `pyproject.toml`
+(`trl>=1.17,<1.18`, EasyDistill at its `v2.0.0` Git tag). Heavy engines run in
+isolated virtual environments, while the core CLI and test suite remain usable without Torch.
 
 ## Quick start
 
 ```bash
-git clone --recursive https://github.com/AMD-AIM/Refina.git
+git clone https://github.com/AMD-AIM/Refina.git
 cd refina
 make dev PROFILE=rocm714
 
@@ -137,16 +137,15 @@ Failures are separated so a shell script can tell a typo from a dead teacher.
 | 2 | bad or missing arguments |
 | 3 | config file invalid |
 | 4 | dataset content invalid |
-| 5 | dataset could not be fetched, or a dataset/weights `sha256` did not match |
+| 5 | dataset could not be fetched, or a dataset `sha256` did not match |
 | 6 | teacher endpoint unreachable |
 | 7 | preflight failed (weights missing, disk full, …) |
 | 8 | engine failed |
 | 9 | out of memory |
-| 10 | results could not be reported to the platform |
-| 130 | cancelled by Ctrl-C / SIGTERM (code `Cancelled`), or by the report_to platform (code `PlatformCancelled`) |
+| 130 | cancelled by Ctrl-C / SIGTERM (code `Cancelled`) |
 
-The process also writes one `REFINA_EVENT <json>` line on stdout per stage,
-per epoch, and at exit; see
+The process also writes one `REFINA_EVENT <json>` line on stdout per stage
+and at exit; see
 [`docs/engines.md`](docs/engines.md#progress-events).
 
 ## How a run is put together
@@ -195,6 +194,8 @@ src/refina/
   utils.py        atomic writes, JSONL, HTTP session, child processes
   engines/
     base.py       the interface: dataset_specs → preflight → run
+    spec.py       EngineSpec: everything the core knows about an engine
+    registry.py   reads specs from the refina.engines entry points
     easydistill.py  black box, stage one: teacher API → SFT JSONL
     swift.py        black box, stage two: student SFT
     easydistill_swift.py  both stages chained, with the intermediate JSONL kept
@@ -202,14 +203,15 @@ src/refina/
     noop.py         no frameworks, used to test the CLI itself
 ```
 
-Adding an engine means adding one module plus a line in
-`engines/registry.py`; adding a parameter means editing `params.py` and nothing
-else.
+Adding an engine means adding one module that exports `SPEC`, an entry point
+under `refina.engines` and its name in `params.ENGINES` (see
+[docs/engines.md](docs/engines.md)); adding a parameter means editing
+`params.py` and nothing else.
 
 ## Development
 
 ```bash
-make dev PROFILE=rocm714  # submodules + isolated core/engine venvs
+make dev PROFILE=rocm714  # isolated core/engine venvs
 make doctor         # verify every engine environment
 make check          # lint + unit tests + doctor
 make test           # unit tests, no GPU needed
@@ -217,12 +219,11 @@ make lint           # ruff
 ./scripts/smoke-cli.sh   # exit-code contract, no GPU, no network
 ```
 
-`make dev` uses only standard `venv` and pip operations. It initializes the
-submodules, preserves the image's preinstalled ROCm Torch, installs the core in
+`make dev` uses only standard `venv` and pip operations. It preserves the image's
+preinstalled ROCm Torch, installs the core in
 `.venv`, and creates `.venvs/swift`, `.venvs/trl`, and
 `.venvs/easydistill`. Use `ENGINES=trl` to install only one engine. The selected
-profile and exact submodule commits are recorded in
-`.distill/environment.lock.json`.
+profile and engines are recorded in `.distill/environment.lock.json`.
 
 `pip install -e .` remains valid for installing only the lightweight core. It
 does not perform network or Git operations.
